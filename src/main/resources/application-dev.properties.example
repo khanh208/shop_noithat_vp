@@ -1,0 +1,33 @@
+# Example development configuration
+# Copy this file to application-dev.properties and update with your values
+
+# Database Configuration
+spring.datasource.url=jdbc:postgresql://localhost:5432/shop_noithat_vp
+spring.datasource.username=postgres
+spring.datasource.password=your_password
+
+# MoMo Sandbox Configuration
+momo.partnerCode=YOUR_PARTNER_CODE
+momo.accessKey=YOUR_ACCESS_KEY
+momo.secretKey=YOUR_SECRET_KEY
+momo.apiEndpoint=https://test-payment.momo.vn/v2/gateway/api/create
+momo.redirectUrl=http://localhost:8080/payment/callback
+momo.ipnUrl=http://your-ngrok-url.ngrok.io/payment/webhook
+
+# Email Configuration
+spring.mail.username=your-email@gmail.com
+spring.mail.password=your-app-password
+
+# JWT Configuration
+jwt.secret=your-secret-key-change-this-minimum-256-bits-long-for-production
+jwt.expiration=86400000
+
+# OAuth2 Configuration
+spring.security.oauth2.client.registration.google.client-id=YOUR_GOOGLE_CLIENT_ID
+spring.security.oauth2.client.registration.google.client-secret=YOUR_GOOGLE_CLIENT_SECRET
+
+spring.security.oauth2.client.registration.facebook.client-id=YOUR_FACEBOOK_CLIENT_ID
+spring.security.oauth2.client.registration.facebook.client-secret=YOUR_FACEBOOK_CLIENT_SECRET
+
+
+

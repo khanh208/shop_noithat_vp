@@ -1,0 +1,6 @@
+version: "2"
+authtoken: 34W6BOrq9L18ObyjFQkRVqIyMrk_6Ubq3tUuE2eLVRifT5Eei
+tunnels:
+  shop:
+    proto: http
+    addr: 8080

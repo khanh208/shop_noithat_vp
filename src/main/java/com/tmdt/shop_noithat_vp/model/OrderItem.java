@@ -1,0 +1,41 @@
+package com.tmdt.shop_noithat_vp.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
+
+import java.math.BigDecimal;
+
+@Entity
+@Table(name = "order_items")
+@Data
+@EqualsAndHashCode(callSuper = true)
+@NoArgsConstructor
+@AllArgsConstructor
+public class OrderItem extends BaseEntity {
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "order_id", nullable = false)
+    private Order order;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "product_id", nullable = false)
+    private Product product;
+    
+    @Column(nullable = false)
+    private Integer quantity;
+    
+    @Column(name = "unit_price", precision = 19, scale = 2, nullable = false)
+    private BigDecimal unitPrice;
+    
+    @Column(name = "total_price", precision = 19, scale = 2, nullable = false)
+    private BigDecimal totalPrice;
+    
+    @Column(name = "product_name")
+    private String productName; // Lưu tên sản phẩm tại thời điểm đặt hàng
+}
+
+
+
