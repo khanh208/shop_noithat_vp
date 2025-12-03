@@ -131,7 +131,7 @@ const Login = () => {
               <button
                 type="button"
                 className="btn btn-outline-danger"
-                onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/google'}
+                onClick={() => window.location.href = 'http://localhost:8082/oauth2/authorization/google'}
               >
                 <i className="fab fa-google me-2"></i>
                 Đăng nhập với Google
@@ -139,7 +139,7 @@ const Login = () => {
               <button
                 type="button"
                 className="btn btn-outline-primary"
-                onClick={() => window.location.href = 'http://localhost:8080/oauth2/authorization/facebook'}
+                onClick={() => window.location.href = 'http://localhost:8082/oauth2/authorization/facebook'}
               >
                 <i className="fab fa-facebook me-2"></i>
                 Đăng nhập với Facebook

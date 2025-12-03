@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import Navigation from '../Navigation'
+import Navigation from  '../Navigation'
 import axios from 'axios'
 
 const AdminDashboard = () => {
@@ -25,11 +25,11 @@ const AdminDashboard = () => {
 
       // Load tất cả dữ liệu song song
       const [statsRes, overviewRes, productsRes, statusRes, categoryRes] = await Promise.all([
-        axios.get('http://localhost:8080/api/admin/dashboard/stats', config),
-        axios.get('http://localhost:8080/api/admin/analytics/overview', config),
-        axios.get('http://localhost:8080/api/admin/analytics/top-selling-products?limit=5', config),
-        axios.get('http://localhost:8080/api/admin/analytics/orders-by-status', config),
-        axios.get('http://localhost:8080/api/admin/analytics/revenue-by-category', config)
+        axios.get('http://localhost:8082/api/admin/dashboard/stats', config),
+        axios.get('http://localhost:8082/api/admin/analytics/overview', config),
+        axios.get('http://localhost:8082/api/admin/analytics/top-selling-products?limit=5', config),
+        axios.get('http://localhost:8082/api/admin/analytics/orders-by-status', config),
+        axios.get('http://localhost:8082/api/admin/analytics/revenue-by-category', config)
       ])
 
       setStats(statsRes.data)

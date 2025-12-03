@@ -7,9 +7,10 @@ import com.tmdt.shop_noithat_vp.model.enums.Role;
 import com.tmdt.shop_noithat_vp.repository.CategoryRepository;
 import com.tmdt.shop_noithat_vp.repository.ProductRepository;
 import com.tmdt.shop_noithat_vp.repository.UserRepository;
-import com.tmdt.shop_noithat_vp.util.PasswordUtil;
+// import com.tmdt.shop_noithat_vp.util.PasswordUtil; // Xóa import này
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
+import org.springframework.security.crypto.password.PasswordEncoder; // Thêm import này
 import org.springframework.stereotype.Component;
 
 import java.math.BigDecimal;
@@ -29,6 +30,9 @@ public class DataSeeder implements CommandLineRunner {
     
     @Autowired
     private ProductRepository productRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder; // Inject PasswordEncoder
     
     @Override
     public void run(String... args) throws Exception {
@@ -43,7 +47,8 @@ public class DataSeeder implements CommandLineRunner {
             User admin = new User();
             admin.setUsername("admin");
             admin.setEmail("admin@test.com");
-            admin.setPassword(PasswordUtil.hashPassword("admin123"));
+            // admin.setPassword(PasswordUtil.hashPassword("admin123")); // Cũ
+            admin.setPassword(passwordEncoder.encode("admin123")); // Mới: Dùng BCrypt
             admin.setFullName("Administrator");
             admin.setPhoneNumber("0123456789");
             admin.setRole(Role.ADMIN);
@@ -58,7 +63,8 @@ public class DataSeeder implements CommandLineRunner {
             User customer = new User();
             customer.setUsername("customer");
             customer.setEmail("customer@test.com");
-            customer.setPassword(PasswordUtil.hashPassword("customer123"));
+            // customer.setPassword(PasswordUtil.hashPassword("customer123")); // Cũ
+            customer.setPassword(passwordEncoder.encode("customer123")); // Mới
             customer.setFullName("Customer Test");
             customer.setPhoneNumber("0987654321");
             customer.setRole(Role.CUSTOMER);
@@ -73,7 +79,8 @@ public class DataSeeder implements CommandLineRunner {
             User testUser = new User();
             testUser.setUsername("testuser");
             testUser.setEmail("testuser@test.com");
-            testUser.setPassword(PasswordUtil.hashPassword("test123"));
+            // testUser.setPassword(PasswordUtil.hashPassword("test123")); // Cũ
+            testUser.setPassword(passwordEncoder.encode("test123")); // Mới
             testUser.setFullName("Test User");
             testUser.setPhoneNumber("0111222333");
             testUser.setRole(Role.CUSTOMER);
@@ -84,6 +91,7 @@ public class DataSeeder implements CommandLineRunner {
         }
     }
     
+    // ... (Phần seedCategories và seedProducts giữ nguyên)
     private void seedCategories() {
         if (categoryRepository.count() == 0) {
             Category cat1 = new Category();
@@ -349,4 +357,3 @@ public class DataSeeder implements CommandLineRunner {
         productRepository.save(product);
     }
 }
-

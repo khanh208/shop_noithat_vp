@@ -35,10 +35,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         if (authHeader != null && authHeader.startsWith("Bearer ")) {
             jwt = authHeader.substring(7);
-            try {
-                username = jwtUtil.extractUsername(jwt);
-            } catch (Exception e) {
-                logger.error("Cannot get username from token", e);
+            
+            // FIX: Thêm kiểm tra jwt không rỗng
+            if (jwt != null && !jwt.isEmpty() && !jwt.equalsIgnoreCase("undefined") && !jwt.equalsIgnoreCase("null")) {
+                try {
+                    username = jwtUtil.extractUsername(jwt);
+                } catch (Exception e) {
+                    logger.error("Cannot get username from token", e);
+                }
             }
         }
         
@@ -56,7 +60,3 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         filterChain.doFilter(request, response);
     }
 }
-
-
-
-

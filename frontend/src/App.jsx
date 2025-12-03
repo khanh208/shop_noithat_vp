@@ -15,6 +15,9 @@ import AdminProductForm from './components/admin/AdminProductForm'
 import { AuthProvider } from './context/AuthContext'
 import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
+import AdminCategories from './components/admin/AdminCategories' // Import mới
+import AdminCategoryForm from './components/admin/AdminCategoryForm' 
+
 
 function App() {
   return (
@@ -34,6 +37,9 @@ function App() {
           <Route path="/admin/products/new" element={<AdminRoute><AdminProductForm /></AdminRoute>} />
           <Route path="/admin/products/:id/edit" element={<AdminRoute><AdminProductForm /></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/categories" element={<AdminRoute><AdminCategories /></AdminRoute>} />
+          <Route path="/admin/categories/new" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
+          <Route path="/admin/categories/:id/edit" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
       </Router>

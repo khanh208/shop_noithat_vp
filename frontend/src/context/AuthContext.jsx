@@ -51,6 +51,7 @@ export const AuthProvider = ({ children }) => {
     } catch (error) {
       return { 
         success: false, 
+        // Dùng optional chaining (?.) để tránh crash
         message: error.response?.data?.message || error.message || 'Đăng nhập thất bại' 
       }
     }

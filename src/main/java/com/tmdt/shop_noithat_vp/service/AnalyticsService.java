@@ -1,21 +1,22 @@
 package com.tmdt.shop_noithat_vp.service;
 
-public class AnalyticsService {
-    
-}
-package com.tmdt.shop_noithat_vp.service;
-
-import com.tmdt.shop_noithat_vp.model.*;
+import com.tmdt.shop_noithat_vp.model.Category;
+import com.tmdt.shop_noithat_vp.model.Order;
+import com.tmdt.shop_noithat_vp.model.OrderItem;
+import com.tmdt.shop_noithat_vp.model.Product;
+import com.tmdt.shop_noithat_vp.model.User;
 import com.tmdt.shop_noithat_vp.model.enums.OrderStatus;
 import com.tmdt.shop_noithat_vp.model.enums.Role;
-import com.tmdt.shop_noithat_vp.repository.*;
+import com.tmdt.shop_noithat_vp.repository.CategoryRepository;
+import com.tmdt.shop_noithat_vp.repository.OrderRepository;
+import com.tmdt.shop_noithat_vp.repository.ProductRepository;
+import com.tmdt.shop_noithat_vp.repository.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
-import java.time.temporal.ChronoUnit;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -24,9 +25,6 @@ public class AnalyticsService {
     
     @Autowired
     private OrderRepository orderRepository;
-    
-    @Autowired
-    private OrderItemRepository orderItemRepository;
     
     @Autowired
     private ProductRepository productRepository;
@@ -84,6 +82,7 @@ public class AnalyticsService {
     }
     
     public long getLowStockProductsCount() {
+        // Giả sử mức tồn kho thấp là 10
         return productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10).size();
     }
     
@@ -95,7 +94,7 @@ public class AnalyticsService {
                 .filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED)
                 .collect(Collectors.toList());
         
-        Map<String, BigDecimal> revenueMap = new TreeMap<>();
+        Map<String, BigDecimal> revenueMap = new TreeMap<>(); // TreeMap để sắp xếp theo key (thời gian)
         
         for (Order order : orders) {
             String key = formatDateByGroupBy(order.getCreatedAt(), groupBy);
@@ -111,6 +110,8 @@ public class AnalyticsService {
     }
     
     private String formatDateByGroupBy(LocalDateTime dateTime, String groupBy) {
+        if (groupBy == null) return dateTime.toLocalDate().toString();
+        
         switch (groupBy.toLowerCase()) {
             case "day":
                 return dateTime.toLocalDate().toString();
@@ -166,7 +167,7 @@ public class AnalyticsService {
                 .collect(Collectors.toList());
     }
     
-    // ========== THỐNG KÊ ĐơN HÀNG THEO TRẠNG THÁI ==========
+    // ========== THỐNG KÊ ĐƠN HÀNG THEO TRẠNG THÁI ==========
     
     public long getOrderCountByStatus(OrderStatus status) {
         return orderRepository.countByOrderStatusAndIsDeletedFalse(status);
@@ -190,8 +191,10 @@ public class AnalyticsService {
             if (order.getOrderStatus() == OrderStatus.DELIVERED) {
                 for (OrderItem item : order.getOrderItems()) {
                     Category category = item.getProduct().getCategory();
-                    categoryRevenueMap.merge(category, item.getTotalPrice(), BigDecimal::add);
-                    categoryCountMap.merge(category, item.getQuantity(), Integer::sum);
+                    if (category != null) {
+                        categoryRevenueMap.merge(category, item.getTotalPrice(), BigDecimal::add);
+                        categoryCountMap.merge(category, item.getQuantity(), Integer::sum);
+                    }
                 }
             }
         }
@@ -297,11 +300,12 @@ public class AnalyticsService {
     
     public byte[] exportReport(String reportType, LocalDateTime startDate, LocalDateTime endDate) {
         // Đây là placeholder - trong thực tế bạn sẽ dùng Apache POI để tạo Excel
-        // Ví dụ đơn giản:
+        // Ví dụ đơn giản trả về CSV
         String csvData = generateCSVReport(reportType, startDate, endDate);
         return csvData.getBytes();
     }
     
+    @SuppressWarnings("unchecked")
     private String generateCSVReport(String reportType, LocalDateTime startDate, LocalDateTime endDate) {
         StringBuilder csv = new StringBuilder();
         

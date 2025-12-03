@@ -6,6 +6,7 @@ import org.json.JSONObject;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.servlet.view.RedirectView;
 
 import java.util.Map;
 
@@ -27,15 +28,20 @@ public class PaymentController {
     }
     
     @GetMapping("/callback")
-    public String handleMoMoCallback(
+    public RedirectView handleMoMoCallback(
             @RequestParam(required = false) String orderId,
             @RequestParam(required = false) String resultCode,
             @RequestParam(required = false) String message) {
-        // Handle redirect from MoMo
+        
+        // URL frontend của bạn (đang chạy ở port 3000)
+        String frontendUrl = "http://localhost:3000/orders";
+        
         if ("0".equals(resultCode)) {
-            return "redirect:/orders?status=success";
+            // Redirect về trang đơn hàng kèm status thành công
+            return new RedirectView(frontendUrl + "?status=success");
         } else {
-            return "redirect:/orders?status=failed&message=" + message;
+            // Redirect về trang đơn hàng kèm thông báo lỗi
+            return new RedirectView(frontendUrl + "?status=failed&message=" + message);
         }
     }
     
