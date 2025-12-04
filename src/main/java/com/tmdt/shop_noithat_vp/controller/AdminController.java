@@ -95,12 +95,14 @@ public class AdminController {
     }
     
     // ==========================================
-    // QUẢN LÝ DANH MỤC (CATEGORY) - MỚI THÊM
+    // QUẢN LÝ DANH MỤC (CATEGORY) - ĐÃ CẬP NHẬT
     // ==========================================
     
     @GetMapping("/categories")
     public ResponseEntity<List<Category>> getAllCategories() {
-        return ResponseEntity.ok(categoryRepository.findByIsActiveTrueAndIsDeletedFalseOrderByDisplayOrderAsc());
+        // LƯU Ý QUAN TRỌNG: Sử dụng findByIsDeletedFalse... để hiển thị cả danh mục ẩn
+        // Nếu dùng findByIsActiveTrue... thì Admin sẽ không thấy danh mục đang tắt
+        return ResponseEntity.ok(categoryRepository.findByIsDeletedFalseOrderByDisplayOrderAsc());
     }
 
     @GetMapping("/categories/{id}")
@@ -132,6 +134,11 @@ public class AdminController {
         category.setDescription(categoryDetails.getDescription());
         category.setDisplayOrder(categoryDetails.getDisplayOrder());
         category.setIsActive(categoryDetails.getIsActive());
+        
+        // Nếu muốn cập nhật cả slug khi tên thay đổi (tùy chọn)
+        // if (!category.getName().equals(categoryDetails.getName())) {
+        //     category.setSlug(generateSlug(categoryDetails.getName()));
+        // }
         
         return ResponseEntity.ok(categoryRepository.save(category));
     }
@@ -186,6 +193,8 @@ public class AdminController {
         slug = slug.replaceAll("đ", "d");
         slug = slug.replaceAll("[^a-z0-9\\s-]", "");
         slug = slug.replaceAll("\\s+", "-");
+        // Xóa dấu gạch ngang ở đầu hoặc cuối nếu có
+        slug = slug.replaceAll("^-+|-+$", "");
         return slug;
     }
 }

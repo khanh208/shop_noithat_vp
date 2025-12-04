@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import Navigation from  '../Navigation'
+import Navigation from '../Navigation'
 import axios from 'axios'
 
 const AdminDashboard = () => {
@@ -97,6 +97,11 @@ const AdminDashboard = () => {
             Dashboard Quản Trị
           </h2>
           <div>
+            {/* Đã thêm nút Quản lý danh mục */}
+            <Link to="/admin/categories" className="btn btn-info me-2 text-white">
+              <i className="fas fa-tags me-2"></i>Quản lý danh mục
+            </Link>
+            
             <Link to="/admin/products" className="btn btn-primary me-2">
               <i className="fas fa-box me-2"></i>Quản lý sản phẩm
             </Link>
@@ -371,6 +376,15 @@ const AdminDashboard = () => {
                       Thêm sản phẩm mới
                     </Link>
                   </div>
+                  
+                  {/* Đã thêm nút Thêm danh mục mới */}
+                  <div className="col-md-3 mb-3">
+                    <Link to="/admin/categories/new" className="btn btn-outline-info w-100">
+                      <i className="fas fa-folder-plus me-2"></i>
+                      Thêm danh mục mới
+                    </Link>
+                  </div>
+
                   <div className="col-md-3 mb-3">
                     <Link to="/admin/orders?status=PENDING" className="btn btn-outline-warning w-100">
                       <i className="fas fa-clock me-2"></i>
