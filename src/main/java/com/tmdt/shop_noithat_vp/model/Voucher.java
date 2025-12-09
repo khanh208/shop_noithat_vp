@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- THÊM IMPORT NÀY
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -19,6 +20,7 @@ import java.util.List;
 @AllArgsConstructor
 public class Voucher extends BaseEntity {
     
+    // ... (Giữ nguyên các trường từ code đến applicableProducts) ...
     @Column(unique = true, nullable = false)
     private String code;
     
@@ -74,10 +76,8 @@ public class Voucher extends BaseEntity {
     )
     private List<Product> applicableProducts = new ArrayList<>();
     
+    // === THÊM @JsonIgnore VÀO DÒNG NÀY ===
+    @JsonIgnore
     @OneToMany(mappedBy = "voucher", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Order> orders = new ArrayList<>();
 }
-
-
-
-

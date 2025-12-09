@@ -14,12 +14,31 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
-    if (token) {
+    // FIX: Kiểm tra token hợp lệ trước khi gửi
+    if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`
+    } else {
+      // Nếu không có token hợp lệ, chuyển về trang login
+      console.error('No valid token found. Redirecting to login...')
+      window.location.href = '/login'
     }
     return config
   },
   (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// FIX: Thêm interceptor để xử lý lỗi 401
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Token hết hạn hoặc không hợp lệ
+      console.error('Unauthorized. Please login again.')
+      localStorage.removeItem('token')
+      window.location.href = '/login'
+    }
     return Promise.reject(error)
   }
 )
@@ -82,7 +101,7 @@ export const adminService = {
     return response.data
   },
 
-  // --- Categories (Danh mục) - Đã bổ sung đầy đủ ---
+  // --- Categories (Danh mục) ---
   getCategories: async () => {
     try {
       const response = await apiClient.get('/categories')
@@ -99,25 +118,21 @@ export const adminService = {
     }
   },
 
-  // Bổ sung hàm lấy chi tiết danh mục
   getCategoryById: async (id) => {
     const response = await apiClient.get(`/categories/${id}`)
     return response.data
   },
 
-  // Bổ sung hàm tạo danh mục mới (Khắc phục lỗi createCategory is not a function)
   createCategory: async (categoryData) => {
     const response = await apiClient.post('/categories', categoryData)
     return response.data
   },
 
-  // Bổ sung hàm cập nhật danh mục
   updateCategory: async (id, categoryData) => {
     const response = await apiClient.put(`/categories/${id}`, categoryData)
     return response.data
   },
 
-  // Bổ sung hàm xóa danh mục
   deleteCategory: async (id) => {
     const response = await apiClient.delete(`/categories/${id}`)
     return response.data

@@ -38,12 +38,23 @@ public class EmailService {
         mailSender.send(message);
     }
     
-    public void sendVerificationEmail(String to, String token) throws MessagingException {
-        String verificationUrl = "http://localhost:8080/auth/verify?token=" + token;
-        String htmlContent = "<h2>Xác thực email của bạn</h2>" +
-                "<p>Vui lòng click vào link sau để xác thực email:</p>" +
-                "<a href=\"" + verificationUrl + "\">" + verificationUrl + "</a>";
-        sendHtmlEmail(to, "Xác thực email", htmlContent);
+    // === ĐÃ SỬA PHẦN NÀY ===
+    // Thêm tham số 'name' để email thân thiện hơn
+    public void sendVerificationEmail(String to, String name, String token) throws MessagingException {
+        // QUAN TRỌNG: Trỏ về Frontend (Port 3000) thay vì Backend
+        String verificationUrl = "http://localhost:3000/verify-email?code=" + token;
+        
+        String htmlContent = "<div style='font-family: Arial, sans-serif; padding: 20px; border: 1px solid #e0e0e0; border-radius: 5px;'>" +
+                "<h2 style='color: #007bff;'>Xác thực tài khoản Shop Nội Thất VP</h2>" +
+                "<p>Xin chào <strong>" + name + "</strong>,</p>" +
+                "<p>Cảm ơn bạn đã đăng ký tài khoản. Vui lòng nhấn vào nút bên dưới để kích hoạt tài khoản của bạn:</p>" +
+                "<p><a href=\"" + verificationUrl + "\" style=\"background-color: #28a745; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;\">Xác thực ngay</a></p>" +
+                "<p>Hoặc copy link sau vào trình duyệt:</p>" +
+                "<p style='color: #666; font-size: 12px;'>" + verificationUrl + "</p>" +
+                "<p>Link này sẽ hết hạn sau 24 giờ.</p>" +
+                "</div>";
+                
+        sendHtmlEmail(to, "Xác thực tài khoản của bạn", htmlContent);
     }
     
     public void sendOrderConfirmationEmail(String to, String orderCode) throws MessagingException {
@@ -53,15 +64,17 @@ public class EmailService {
         sendHtmlEmail(to, "Xác nhận đơn hàng", htmlContent);
     }
     
+    // Sửa luôn cái này cho đồng bộ (trỏ về Frontend)
     public void sendResetPasswordEmail(String to, String token) throws MessagingException {
-        String resetUrl = "http://localhost:8080/auth/reset-password?token=" + token;
+        // Trỏ về Frontend port 3000
+        String resetUrl = "http://localhost:3000/reset-password?token=" + token;
+        
         String htmlContent = "<h2>Yêu cầu đặt lại mật khẩu</h2>" +
                 "<p>Bạn đã yêu cầu đặt lại mật khẩu. Vui lòng click vào link sau để đặt lại mật khẩu:</p>" +
-                "<p><a href=\"" + resetUrl + "\" style=\"background-color: #4CAF50; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;\">Đặt lại mật khẩu</a></p>" +
+                "<p><a href=\"" + resetUrl + "\" style=\"background-color: #dc3545; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px; display: inline-block;\">Đặt lại mật khẩu</a></p>" +
                 "<p>Hoặc copy link sau vào trình duyệt:</p>" +
                 "<p>" + resetUrl + "</p>" +
-                "<p><strong>Lưu ý:</strong> Link này sẽ hết hạn sau 1 giờ. Nếu bạn không yêu cầu đặt lại mật khẩu, vui lòng bỏ qua email này.</p>";
+                "<p><strong>Lưu ý:</strong> Link này sẽ hết hạn sau 1 giờ.</p>";
         sendHtmlEmail(to, "Đặt lại mật khẩu", htmlContent);
     }
 }
-

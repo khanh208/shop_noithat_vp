@@ -27,7 +27,24 @@ const AdminOrders = () => {
   }
 
   const handleUpdateStatus = async (orderId, newStatus) => {
-    if (window.confirm(`Bạn có chắc muốn cập nhật trạng thái đơn hàng thành "${newStatus}"?`)) {
+    // Tìm đơn hàng hiện tại để hiển thị thông báo phù hợp
+    const currentOrder = orders.find(o => o.id === orderId)
+    const currentStatus = currentOrder?.orderStatus
+
+    let confirmMessage = `Bạn có chắc muốn cập nhật trạng thái đơn hàng thành "${newStatus}"?`
+
+    // Tùy chỉnh thông báo dựa trên hành động
+    if (newStatus === 'CANCELLED') {
+      if (currentStatus === 'SHIPPING') {
+        confirmMessage = 'Bạn có chắc chắn muốn báo cáo GIAO HÀNG THẤT BẠI và hủy đơn hàng này không?'
+      } else {
+        confirmMessage = 'Bạn có chắc chắn muốn HỦY đơn hàng này không? Hành động này không thể hoàn tác.'
+      }
+    } else if (newStatus === 'DELIVERED') {
+      confirmMessage = 'Xác nhận đơn hàng đã GIAO THÀNH CÔNG và hoàn tất?'
+    }
+
+    if (window.confirm(confirmMessage)) {
       try {
         await adminService.updateOrderStatus(orderId, newStatus)
         await loadOrders()
@@ -61,8 +78,8 @@ const AdminOrders = () => {
       'CONFIRMED': 'Đã xác nhận',
       'PACKING': 'Đang đóng gói',
       'SHIPPING': 'Đang giao hàng',
-      'DELIVERED': 'Đã giao hàng',
-      'CANCELLED': 'Đã hủy'
+      'DELIVERED': 'Giao thành công',
+      'CANCELLED': 'Đã hủy/Thất bại'
     }
     return texts[status] || status
   }
@@ -131,47 +148,90 @@ const AdminOrders = () => {
                         </span>
                       </td>
                       <td>
-                        <span className={`badge bg-${order.paymentStatus === 'PAID' ? 'success' : 'warning'}`}>
-                          {order.paymentStatus === 'PAID' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                        <span className={`badge bg-${order.paymentStatus === 'SUCCESS' ? 'success' : 'warning'}`}>
+                          {order.paymentStatus === 'SUCCESS' ? 'Đã thanh toán' : 'Chưa thanh toán'}
                         </span>
                       </td>
                       <td>
                         <div className="btn-group">
+                          {/* Trạng thái CHỜ XỬ LÝ */}
                           {order.orderStatus === 'PENDING' && (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')}
-                              title="Xác nhận đơn hàng"
-                            >
-                              <i className="fas fa-check"></i>
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-success"
+                                onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')}
+                                title="Xác nhận đơn hàng"
+                              >
+                                <i className="fas fa-check"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger ms-1"
+                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
+                                title="Hủy đơn hàng"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </>
                           )}
+
+                          {/* Trạng thái ĐÃ XÁC NHẬN -> Thêm nút Hủy */}
                           {order.orderStatus === 'CONFIRMED' && (
-                            <button
-                              className="btn btn-sm btn-primary"
-                              onClick={() => handleUpdateStatus(order.id, 'PACKING')}
-                              title="Đóng gói"
-                            >
-                              <i className="fas fa-box"></i>
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-primary"
+                                onClick={() => handleUpdateStatus(order.id, 'PACKING')}
+                                title="Chuyển sang đóng gói"
+                              >
+                                <i className="fas fa-box"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger ms-1"
+                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
+                                title="Hủy đơn hàng"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </>
                           )}
+
+                          {/* Trạng thái ĐANG ĐÓNG GÓI -> Thêm nút Hủy */}
                           {order.orderStatus === 'PACKING' && (
-                            <button
-                              className="btn btn-sm btn-info"
-                              onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
-                              title="Giao hàng"
-                            >
-                              <i className="fas fa-truck"></i>
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-info"
+                                onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
+                                title="Chuyển sang giao hàng"
+                              >
+                                <i className="fas fa-truck"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger ms-1"
+                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
+                                title="Hủy đơn hàng"
+                              >
+                                <i className="fas fa-times"></i>
+                              </button>
+                            </>
                           )}
+
+                          {/* Trạng thái ĐANG GIAO HÀNG -> Có nút Giao thành công & Thất bại */}
                           {order.orderStatus === 'SHIPPING' && (
-                            <button
-                              className="btn btn-sm btn-success"
-                              onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
-                              title="Hoàn thành"
-                            >
-                              <i className="fas fa-check-circle"></i>
-                            </button>
+                            <>
+                              <button
+                                className="btn btn-sm btn-success me-1"
+                                onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
+                                title="Giao thành công"
+                              >
+                                <i className="fas fa-check-circle"></i>
+                              </button>
+                              <button
+                                className="btn btn-sm btn-danger"
+                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
+                                title="Giao thất bại / Hủy"
+                              >
+                                <i className="fas fa-times-circle"></i>
+                              </button>
+                            </>
                           )}
                         </div>
                       </td>
@@ -212,7 +272,3 @@ const AdminOrders = () => {
 }
 
 export default AdminOrders
-
-
-
-

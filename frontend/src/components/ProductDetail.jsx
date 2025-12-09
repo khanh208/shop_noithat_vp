@@ -107,9 +107,10 @@ const ProductDetail = () => {
         <div className="row">
           <div className="col-md-6">
             <img
+              // ĐÃ SỬA: Thay bằng placehold.co
               src={product.images && product.images.length > 0 
                 ? product.images[0].imageUrl 
-                : 'https://via.placeholder.com/600x400?text=No+Image'}
+                : 'https://placehold.co/600x400?text=No+Image'}
               className="img-fluid rounded shadow"
               alt={product.name}
             />

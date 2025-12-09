@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // Import quan trọng
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -45,7 +46,8 @@ public class Product extends BaseEntity {
     @Column(name = "min_stock_level")
     private Integer minStockLevel = 10;
     
-    @ManyToOne(fetch = FetchType.LAZY)
+    // Sử dụng EAGER để lấy luôn thông tin Category khi query Product, tránh lỗi Lazy loading
+    @ManyToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "category_id", nullable = false)
     private Category category;
     
@@ -85,22 +87,25 @@ public class Product extends BaseEntity {
     @Column(name = "sold_count")
     private Long soldCount = 0L;
     
+    // Giữ lại images để hiển thị ảnh sản phẩm (KHÔNG thêm @JsonIgnore)
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<ProductImage> images = new ArrayList<>();
     
+    // === CÁC TRƯỜNG DƯỚI ĐÂY THÊM @JsonIgnore ĐỂ TRÁNH VÒNG LẶP VÔ TẬN ===
+    
+    @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Review> reviews = new ArrayList<>();
     
+    @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<OrderItem> orderItems = new ArrayList<>();
     
+    @JsonIgnore // Quan trọng: Khắc phục lỗi hiển thị giỏ hàng
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<CartItem> cartItems = new ArrayList<>();
     
+    @JsonIgnore
     @OneToMany(mappedBy = "product", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Wishlist> wishlists = new ArrayList<>();
 }
-
-
-
-

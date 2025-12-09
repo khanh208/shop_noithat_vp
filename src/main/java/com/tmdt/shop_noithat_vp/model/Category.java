@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- THÊM IMPORT NÀY
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -34,10 +35,14 @@ public class Category extends BaseEntity {
     @Column(name = "image_url")
     private String imageUrl;
     
+    // === THÊM @JsonIgnore VÀO 3 TRƯỜNG DƯỚI ĐÂY ===
+    
+    @JsonIgnore
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "parent_id")
     private Category parent;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Category> children = new ArrayList<>();
     
@@ -47,10 +52,7 @@ public class Category extends BaseEntity {
     @Column(name = "is_active")
     private Boolean isActive = true;
     
+    @JsonIgnore
     @OneToMany(mappedBy = "category", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private List<Product> products = new ArrayList<>();
 }
-
-
-
-

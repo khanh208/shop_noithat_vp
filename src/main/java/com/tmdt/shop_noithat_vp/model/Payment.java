@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- THÊM IMPORT
 import com.tmdt.shop_noithat_vp.model.enums.PaymentStatus;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -17,12 +18,13 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class Payment extends BaseEntity {
     
+    @JsonIgnore // <-- THÊM DÒNG NÀY
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
     
     @Column(name = "transaction_id", unique = true)
-    private String transactionId; // MoMo transaction ID
+    private String transactionId; 
     
     @Column(name = "partner_code")
     private String partnerCode;
@@ -38,7 +40,7 @@ public class Payment extends BaseEntity {
     private PaymentStatus paymentStatus = PaymentStatus.PENDING;
     
     @Column(name = "payment_method")
-    private String paymentMethod; // MOMO, COD
+    private String paymentMethod; 
     
     @Column(name = "response_time")
     private Long responseTime;
@@ -53,9 +55,5 @@ public class Payment extends BaseEntity {
     private String signature;
     
     @Column(name = "callback_data", columnDefinition = "TEXT")
-    private String callbackData; // Lưu toàn bộ callback từ MoMo
+    private String callbackData; 
 }
-
-
-
-

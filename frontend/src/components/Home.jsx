@@ -77,9 +77,10 @@ const Home = () => {
                   <div className="card h-100 shadow-sm">
                     <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none">
                       <img
+                        // ĐÃ SỬA: Thay bằng placehold.co
                         src={product.images && product.images.length > 0
                           ? product.images[0].imageUrl
-                          : 'https://via.placeholder.com/300x200?text=No+Image'}
+                          : 'https://placehold.co/300x200?text=No+Image'}
                         className="card-img-top"
                         alt={product.name}
                         style={{ height: '200px', objectFit: 'cover' }}
@@ -147,9 +148,10 @@ const Home = () => {
                   <div className="card h-100 shadow-sm">
                     <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none">
                       <img
+                        // ĐÃ SỬA: Thay bằng placehold.co
                         src={product.images && product.images.length > 0
                           ? product.images[0].imageUrl
-                          : 'https://via.placeholder.com/300x200?text=No+Image'}
+                          : 'https://placehold.co/300x200?text=No+Image'}
                         className="card-img-top"
                         alt={product.name}
                         style={{ height: '200px', objectFit: 'cover' }}
@@ -203,4 +205,3 @@ const Home = () => {
 }
 
 export default Home
-

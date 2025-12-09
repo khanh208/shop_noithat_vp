@@ -101,9 +101,10 @@ const Cart = () => {
                       <div className="row align-items-center">
                         <div className="col-md-2">
                           <img
+                            // ĐÃ SỬA: Thay bằng placehold.co
                             src={item.product.images && item.product.images.length > 0
                               ? item.product.images[0].imageUrl
-                              : 'https://via.placeholder.com/100?text=No+Image'}
+                              : 'https://placehold.co/100?text=No+Image'}
                             className="img-fluid rounded"
                             alt={item.product.name}
                           />
@@ -199,7 +200,3 @@ const Cart = () => {
 }
 
 export default Cart
-
-
-
-

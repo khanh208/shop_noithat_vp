@@ -10,7 +10,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import com.tmdt.shop_noithat_vp.model.enums.PaymentStatus;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -149,13 +149,21 @@ public class OrderService {
     public Order updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
+        
         order.setOrderStatus(status);
+        
+        if (status == OrderStatus.DELIVERED) {
+            order.setPaymentStatus(PaymentStatus.SUCCESS);
+        }
+        // ======================
+        
         return orderRepository.save(order);
     }
     
     @Transactional
     public Order updateOrderStatus(Long orderId, String status) {
         OrderStatus orderStatus = OrderStatus.valueOf(status.toUpperCase());
+        
         return updateOrderStatus(orderId, orderStatus);
     }
     

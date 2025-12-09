@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- THÊM IMPORT
 import com.tmdt.shop_noithat_vp.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -60,19 +61,21 @@ public class User extends BaseEntity {
     @Column(name = "avatar_url")
     private String avatarUrl;
     
+    // === THÊM @JsonIgnore VÀO CÁC DANH SÁCH DƯỚI ĐÂY ===
+    
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Address> addresses = new HashSet<>();
     
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Order> orders = new HashSet<>();
     
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Review> reviews = new HashSet<>();
     
+    @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Wishlist> wishlists = new HashSet<>();
 }
-
-
-
-

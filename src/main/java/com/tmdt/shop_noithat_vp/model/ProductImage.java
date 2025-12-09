@@ -1,5 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // <-- Thêm import
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -14,6 +15,7 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 public class ProductImage extends BaseEntity {
     
+    @JsonIgnore // <-- THÊM DÒNG NÀY
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
@@ -27,7 +29,3 @@ public class ProductImage extends BaseEntity {
     @Column(name = "is_primary")
     private Boolean isPrimary = false;
 }
-
-
-
-

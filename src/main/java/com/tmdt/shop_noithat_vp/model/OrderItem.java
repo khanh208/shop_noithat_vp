@@ -1,10 +1,12 @@
 package com.tmdt.shop_noithat_vp.model;
 
+import com.fasterxml.jackson.annotation.JsonIgnore; // Import quan trọng
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString; // Import quan trọng
 
 import java.math.BigDecimal;
 
@@ -16,10 +18,19 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class OrderItem extends BaseEntity {
     
+    // === THÊM CÁC ANNOTATION NÀY ===
+    @JsonIgnore // Ngắt vòng lặp JSON: Order -> OrderItem -> Order...
+    @ToString.Exclude // Ngắt vòng lặp Lombok toString
+    @EqualsAndHashCode.Exclude // Ngắt vòng lặp Lombok hashCode
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "order_id", nullable = false)
     private Order order;
     
+    // === THÊM CÁC ANNOTATION NÀY ===
+    // Product không cần JsonIgnore (để Frontend hiển thị thông tin sp), 
+    // nhưng cần Exclude của Lombok để tránh lỗi Lazy Loading khi log
+    @ToString.Exclude 
+    @EqualsAndHashCode.Exclude
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "product_id", nullable = false)
     private Product product;
@@ -36,7 +47,3 @@ public class OrderItem extends BaseEntity {
     @Column(name = "product_name")
     private String productName; // Lưu tên sản phẩm tại thời điểm đặt hàng
 }
-
-
-
-

@@ -4,21 +4,22 @@ import com.tmdt.shop_noithat_vp.security.JwtAuthenticationFilter;
 import com.tmdt.shop_noithat_vp.service.CustomUserDetailsService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.HttpStatus; 
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
+import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import org.springframework.http.HttpStatus; // Thêm import này
-import org.springframework.security.web.authentication.HttpStatusEntryPoint;
 
 import java.util.Arrays;
 import java.util.List;
@@ -50,15 +51,18 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain filterChain(HttpSecurity http) throws Exception {
         http
-            .csrf(csrf -> csrf.disable())
+            .csrf(AbstractHttpConfigurer::disable)
             .cors(cors -> cors.configurationSource(corsConfigurationSource()))
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
-                .requestMatchers("/api/auth/**", "/auth/**", "/", "/home", "/products/**", 
-                               "/product/**", "/categories/**", "/blog/**", "/payment/callback", 
-                               "/payment/webhook", "/css/**", "/js/**", "/images/**", "/uploads/**").permitAll()
-                .requestMatchers("/admin/**").hasAnyRole("ADMIN", "SALES", "WAREHOUSE", "MARKETING")
-                .requestMatchers("/api/admin/**").hasAnyRole("ADMIN", "SALES", "WAREHOUSE", "MARKETING")
+                .requestMatchers(
+                    "/api/auth/**", "/auth/**", "/", "/home", 
+                    "/api/products/**", "/api/categories/**", "/api/blog/**",
+                    "/product/**", "/categories/**", "/blog/**",
+                    "/payment/callback", "/payment/webhook", 
+                    "/css/**", "/js/**", "/images/**", "/uploads/**"
+                ).permitAll()
+                .requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "SALES", "WAREHOUSE", "MARKETING")
                 .requestMatchers("/shipper/**").hasRole("SHIPPER")
                 .anyRequest().authenticated()
             )
@@ -77,7 +81,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
-        configuration.setAllowedOrigins(List.of("http://localhost:8080", "http://localhost:3000"));
+        configuration.setAllowedOrigins(List.of("http://localhost:8082", "http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));
         configuration.setAllowCredentials(true);
@@ -87,4 +91,3 @@ public class SecurityConfig {
         return source;
     }
 }
-
