@@ -40,13 +40,25 @@ public class AuthController {
     }
     
     /**
-     * Xác thực email
+     * Xác thực email - Hỗ trợ cả query param từ URL
      */
     @GetMapping("/verify")
-    public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam String token) {
+    public ResponseEntity<Map<String, String>> verifyEmail(@RequestParam("code") String token) {
         authService.verifyEmail(token);
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Email đã được xác thực thành công");
+        response.put("message", "Email đã được xác thực thành công! Bạn có thể đăng nhập ngay bây giờ.");
+        response.put("success", "true");
+        return ResponseEntity.ok(response);
+    }
+    
+    /**
+     * Gửi lại email xác thực
+     */
+    @PostMapping("/resend-verification")
+    public ResponseEntity<Map<String, String>> resendVerification(@RequestParam String email) {
+        authService.resendVerificationEmail(email);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Email xác thực đã được gửi lại. Vui lòng kiểm tra hộp thư.");
         return ResponseEntity.ok(response);
     }
     
@@ -68,8 +80,8 @@ public class AuthController {
     public ResponseEntity<Map<String, String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
         authService.resetPassword(request);
         Map<String, String> response = new HashMap<>();
-        response.put("message", "Mật khẩu đã được đặt lại thành công");
+        response.put("message", "Mật khẩu đã được đặt lại thành công. Bạn có thể đăng nhập với mật khẩu mới.");
+        response.put("success", "true");
         return ResponseEntity.ok(response);
     }
 }
-

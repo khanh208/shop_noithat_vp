@@ -59,8 +59,8 @@ public class SecurityConfig {
                     "/api/auth/**", "/auth/**", "/", "/home", 
                     "/api/products/**", "/api/categories/**", "/api/blog/**",
                     "/product/**", "/categories/**", "/blog/**",
-                    "/payment/callback", "/payment/webhook", 
-                    "/css/**", "/js/**", "/images/**", "/uploads/**"
+                    "/payment/callback", 
+                    "/css/**", "/js/**", "/images/**", "/uploads/**", "/api/payment/**"
                 ).permitAll()
                 .requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "SALES", "WAREHOUSE", "MARKETING")
                 .requestMatchers("/shipper/**").hasRole("SHIPPER")

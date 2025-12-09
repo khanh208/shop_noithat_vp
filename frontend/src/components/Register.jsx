@@ -12,7 +12,7 @@ const Register = () => {
     phoneNumber: ''
   })
   const [error, setError] = useState('')
-  const [success, setSuccess] = useState('')
+  const [success, setSuccess] = useState(false)
   const [loading, setLoading] = useState(false)
   const { register } = useAuth()
   const navigate = useNavigate()
@@ -23,13 +23,12 @@ const Register = () => {
       [e.target.name]: e.target.value
     })
     setError('')
-    setSuccess('')
   }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError('')
-    setSuccess('')
+    setSuccess(false)
     setLoading(true)
 
     // Validation
@@ -60,15 +59,48 @@ const Register = () => {
     })
     
     if (result.success) {
-      setSuccess('Đăng ký thành công! Đang chuyển hướng...')
-      setTimeout(() => {
-        navigate('/home')
-      }, 1500)
+      setSuccess(true)
+      // Không tự động chuyển trang nữa, hiển thị thông báo để user check email
     } else {
       setError(result.message || 'Đăng ký thất bại')
     }
     
     setLoading(false)
+  }
+
+  // === THÊM UI HIỂN THỊ KHI ĐĂNG KÝ THÀNH CÔNG ===
+  if (success) {
+    return (
+      <div className="login-container">
+        <div className="login-card">
+          <h2 className="login-title">
+            <i className="fas fa-check-circle text-success me-2"></i>
+            Đăng ký thành công!
+          </h2>
+          
+          <div className="alert alert-success">
+            <i className="fas fa-envelope me-2"></i>
+            <strong>Kiểm tra email của bạn!</strong>
+            <p className="mb-0 mt-2">
+              Chúng tôi đã gửi email xác thực đến <strong>{formData.email}</strong>.
+              Vui lòng nhấn vào link trong email để kích hoạt tài khoản.
+            </p>
+          </div>
+
+          <div className="alert alert-info">
+            <i className="fas fa-info-circle me-2"></i>
+            <small>
+              <strong>Lưu ý:</strong> Kiểm tra cả thư mục spam nếu không thấy email.
+            </small>
+          </div>
+
+          <Link to="/login" className="btn btn-primary w-100">
+            <i className="fas fa-arrow-left me-2"></i>
+            Về trang đăng nhập
+          </Link>
+        </div>
+      </div>
+    )
   }
 
   return (
@@ -83,13 +115,6 @@ const Register = () => {
           <div className="alert alert-danger" role="alert">
             <i className="fas fa-exclamation-circle me-2"></i>
             {error}
-          </div>
-        )}
-
-        {success && (
-          <div className="alert alert-success" role="alert">
-            <i className="fas fa-check-circle me-2"></i>
-            {success}
           </div>
         )}
 
@@ -228,7 +253,3 @@ const Register = () => {
 }
 
 export default Register
-
-
-
-

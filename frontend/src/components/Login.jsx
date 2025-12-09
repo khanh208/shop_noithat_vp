@@ -92,7 +92,8 @@ const Login = () => {
             />
           </div>
 
-          <div className="mb-3">
+          {/* === SỬA PHẦN NÀY === */}
+          <div className="mb-3 text-end">
             <Link to="/forgot-password" className="text-decoration-none">
               Quên mật khẩu?
             </Link>
@@ -162,7 +163,3 @@ const Login = () => {
 }
 
 export default Login
-
-
-
-

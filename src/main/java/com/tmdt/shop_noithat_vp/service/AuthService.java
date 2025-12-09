@@ -10,17 +10,12 @@ import com.tmdt.shop_noithat_vp.model.enums.Role;
 import com.tmdt.shop_noithat_vp.repository.UserRepository;
 import com.tmdt.shop_noithat_vp.util.JwtUtil;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.beans.factory.annotation.Value;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-import org.springframework.security.crypto.password.PasswordEncoder; // Giữ lại import này
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.UUID;
 
-/**
- * Authentication Service - Manual implementation without Spring Security dependencies
- * Handles registration, login, password reset manually
- */
 @Service
 public class AuthService {
 
@@ -33,12 +28,8 @@ public class AuthService {
     @Autowired
     private EmailService emailService;
     
-    // Đã được inject và sẽ dùng BCryptPasswordEncoder được khai báo trong SecurityConfig
     @Autowired
-    private PasswordEncoder passwordEncoder; 
-
-    @Value("${app.base-url:http://localhost:8080}")
-    private String baseUrl;
+    private PasswordEncoder passwordEncoder;
 
     /**
      * Register a new user
@@ -64,29 +55,30 @@ public class AuthService {
         User user = new User();
         user.setUsername(request.getUsername());
         user.setEmail(request.getEmail());
-
-        // FIX: Hash password sử dụng PasswordEncoder (BCrypt)
         user.setPassword(passwordEncoder.encode(request.getPassword()));
-
         user.setFullName(request.getFullName());
         user.setPhoneNumber(request.getPhoneNumber());
         user.setRole(Role.CUSTOMER);
         user.setIsActive(true);
-        user.setIsEmailVerified(false);
+        user.setIsEmailVerified(false); // Chưa xác thực
         user.setVerificationToken(UUID.randomUUID().toString());
 
         // Save user
         user = userRepository.save(user);
 
-        // Send verification email
+        // === FIX: Gửi email xác thực với đầy đủ tham số ===
         try {
-            emailService.sendVerificationEmail(user.getEmail(), user.getVerificationToken());
+            emailService.sendVerificationEmail(
+                user.getEmail(), 
+                user.getFullName(), // Truyền tên người dùng
+                user.getVerificationToken()
+            );
         } catch (Exception e) {
-            // FIX: Giữ lại System.err.println() theo code gốc, nhưng nên chuyển sang Logger
-            System.err.println("Failed to send verification email: " + e.getMessage()); 
+            System.err.println("Failed to send verification email: " + e.getMessage());
+            e.printStackTrace();
         }
 
-        // Generate JWT token manually
+        // Generate JWT token (tạm thời cho phép login, nhưng cần verify email sau)
         String token = jwtUtil.generateTokenFromUsername(user.getUsername(), user.getRole().name());
 
         return new AuthResponse(token, "Bearer", user.getId(), user.getUsername(),
@@ -94,7 +86,7 @@ public class AuthService {
     }
 
     /**
-     * Login user - Manual authentication without Spring Security
+     * Login user
      */
     public AuthResponse login(LoginRequest request) {
         // Find user by username or email
@@ -108,12 +100,12 @@ public class AuthService {
             throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         }
         
-        // FIX: Thêm kiểm tra xác thực email
+        // === FIX: Kiểm tra email đã xác thực chưa ===
         if (!user.getIsEmailVerified()) {
-            throw new RuntimeException("Vui lòng xác thực email trước khi đăng nhập.");
+            throw new RuntimeException("Vui lòng xác thực email trước khi đăng nhập. Kiểm tra hộp thư của bạn.");
         }
 
-        // FIX: Verify password sử dụng PasswordEncoder (BCrypt)
+        // Verify password
         if (!passwordEncoder.matches(request.getPassword(), user.getPassword())) {
             throw new RuntimeException("Tên đăng nhập hoặc mật khẩu không đúng");
         }
@@ -131,10 +123,14 @@ public class AuthService {
     @Transactional
     public void verifyEmail(String token) {
         User user = userRepository.findByVerificationToken(token)
-                .orElseThrow(() -> new RuntimeException("Token xác thực không hợp lệ"));
+                .orElseThrow(() -> new RuntimeException("Token xác thực không hợp lệ hoặc đã hết hạn"));
+
+        if (user.getIsEmailVerified()) {
+            throw new RuntimeException("Email đã được xác thực trước đó");
+        }
 
         user.setIsEmailVerified(true);
-        user.setVerificationToken(null);
+        user.setVerificationToken(null); // Xóa token sau khi verify
         userRepository.save(user);
     }
 
@@ -146,7 +142,6 @@ public class AuthService {
         User user = userRepository.findByEmail(request.getEmail())
                 .orElseThrow(() -> new RuntimeException("Email không tồn tại trong hệ thống"));
 
-        // Check if account is active
         if (!user.getIsActive()) {
             throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         }
@@ -183,18 +178,42 @@ public class AuthService {
         User user = userRepository.findByResetPasswordToken(request.getToken())
                 .orElseThrow(() -> new RuntimeException("Token đặt lại mật khẩu không hợp lệ hoặc đã hết hạn"));
 
-        // Check if account is active
         if (!user.getIsActive()) {
             throw new RuntimeException("Tài khoản đã bị vô hiệu hóa");
         }
 
-        // FIX: Hash new password sử dụng PasswordEncoder (BCrypt)
+        // Hash new password
         user.setPassword(passwordEncoder.encode(request.getNewPassword()));
-
-        // Clear reset token
-        user.setResetPasswordToken(null);
-
-        // Save user
+        user.setResetPasswordToken(null); // Xóa token sau khi reset
         userRepository.save(user);
+    }
+    
+    /**
+     * Resend verification email
+     */
+    @Transactional
+    public void resendVerificationEmail(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new RuntimeException("Email không tồn tại"));
+        
+        if (user.getIsEmailVerified()) {
+            throw new RuntimeException("Email đã được xác thực");
+        }
+        
+        // Generate new token nếu cần
+        if (user.getVerificationToken() == null) {
+            user.setVerificationToken(UUID.randomUUID().toString());
+            userRepository.save(user);
+        }
+        
+        try {
+            emailService.sendVerificationEmail(
+                user.getEmail(),
+                user.getFullName(),
+                user.getVerificationToken()
+            );
+        } catch (Exception e) {
+            throw new RuntimeException("Không thể gửi email xác thực: " + e.getMessage());
+        }
     }
 }

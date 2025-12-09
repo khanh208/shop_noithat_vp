@@ -132,13 +132,34 @@ const Checkout = () => {
     setProcessing(true)
 
     try {
-      await orderService.createOrder(formData)
+      // 1. Tạo đơn hàng trước (với trạng thái PENDING)
+      const orderData = await orderService.createOrder(formData) // API này trả về thông tin Order vừa tạo
+      
       if (formData.paymentMethod === 'MOMO') {
-        alert('Chức năng thanh toán MoMo đang phát triển. Đơn hàng đã được tạo với trạng thái Chờ thanh toán.')
+        // 2. Nếu chọn MoMo -> Gọi API lấy link thanh toán
+        try {
+          // Lưu ý: orderData phải chứa id của đơn hàng (kiểm tra lại API createOrder trả về gì)
+          // Giả sử API createOrder trả về object Order
+          const response = await axios.post(`http://localhost:8082/api/payment/create-momo/${orderData.id}`)
+          
+          if (response.data && response.data.payUrl) {
+            // 3. Chuyển hướng sang trang MoMo
+            window.location.href = response.data.payUrl
+          } else {
+            alert('Lỗi: Không nhận được link thanh toán từ MoMo.')
+            navigate('/orders')
+          }
+        } catch (momoError) {
+          console.error('Lỗi MoMo:', momoError)
+          alert('Tạo đơn hàng thành công nhưng lỗi kết nối MoMo. Vui lòng thanh toán lại trong đơn hàng.')
+          navigate('/orders')
+        }
       } else {
+        // Nếu COD
         alert('Đặt hàng thành công!')
+        navigate('/orders')
       }
-      navigate('/orders')
+      
     } catch (error) {
       console.error('Lỗi đặt hàng:', error)
       alert('Đặt hàng thất bại: ' + (error.response?.data?.message || error.message))

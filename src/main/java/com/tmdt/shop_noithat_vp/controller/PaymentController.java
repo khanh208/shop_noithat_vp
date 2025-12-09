@@ -1,62 +1,61 @@
 package com.tmdt.shop_noithat_vp.controller;
 
-import com.tmdt.shop_noithat_vp.model.Payment;
-import com.tmdt.shop_noithat_vp.service.PaymentService;
-import org.json.JSONObject;
+import com.tmdt.shop_noithat_vp.model.Order;
+import com.tmdt.shop_noithat_vp.repository.OrderRepository;
+import com.tmdt.shop_noithat_vp.service.MoMoService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import org.springframework.web.servlet.view.RedirectView;
+import com.tmdt.shop_noithat_vp.model.enums.OrderStatus;
+import com.tmdt.shop_noithat_vp.model.enums.PaymentStatus;
 
 import java.util.Map;
 
 @RestController
-@RequestMapping("/payment")
+@RequestMapping("/api/payment")
 public class PaymentController {
-    
+
     @Autowired
-    private PaymentService paymentService;
-    
-    @PostMapping("/momo/create/{orderId}")
-    public ResponseEntity<Payment> createMoMoPayment(@PathVariable Long orderId) {
+    private MoMoService moMoService;
+
+    @Autowired
+    private OrderRepository orderRepository;
+
+    // API tạo link thanh toán MoMo
+    @PostMapping("/momo-ipn")
+    public ResponseEntity<?> momoIPN(@RequestBody Map<String, Object> requestBody) {
+        // Log dữ liệu MoMo gửi về để debug (nếu cần)
+        System.out.println("MoMo IPN received: " + requestBody);
+
         try {
-            Payment payment = paymentService.createMoMoPayment(orderId);
-            return ResponseEntity.ok(payment);
+            // 1. Lấy các thông tin quan trọng
+            String resultCode = String.valueOf(requestBody.get("resultCode"));
+            String orderIdStr = (String) requestBody.get("orderId"); // Đây là orderCode
+            
+            // 2. Kiểm tra kết quả
+            if ("0".equals(resultCode)) {
+                // Thanh toán thành công
+                // Tìm đơn hàng dựa trên orderCode (Lưu ý: trong MoMoService ta gửi orderCode vào trường orderId)
+                Order order = orderRepository.findByOrderCode(orderIdStr)
+                        .orElseThrow(() -> new RuntimeException("Order not found: " + orderIdStr));
+
+                // 3. Cập nhật trạng thái đơn hàng
+                if (order.getPaymentStatus() != PaymentStatus.SUCCESS) {
+                    order.setPaymentStatus(PaymentStatus.SUCCESS);
+                    order.setOrderStatus(OrderStatus.CONFIRMED); // Tự động xác nhận đơn
+                    orderRepository.save(order);
+                    System.out.println("✓ Cập nhật đơn hàng " + orderIdStr + " thành công.");
+                }
+            } else {
+                System.out.println("✗ Thanh toán thất bại cho đơn: " + orderIdStr);
+            }
+
+            // 4. Trả về 204 No Content theo chuẩn MoMo để báo đã nhận tin
+            return ResponseEntity.noContent().build();
+
         } catch (Exception e) {
-            return ResponseEntity.internalServerError().build();
-        }
-    }
-    
-    @GetMapping("/callback")
-    public RedirectView handleMoMoCallback(
-            @RequestParam(required = false) String orderId,
-            @RequestParam(required = false) String resultCode,
-            @RequestParam(required = false) String message) {
-        
-        // URL frontend của bạn (đang chạy ở port 3000)
-        String frontendUrl = "http://localhost:3000/orders";
-        
-        if ("0".equals(resultCode)) {
-            // Redirect về trang đơn hàng kèm status thành công
-            return new RedirectView(frontendUrl + "?status=success");
-        } else {
-            // Redirect về trang đơn hàng kèm thông báo lỗi
-            return new RedirectView(frontendUrl + "?status=failed&message=" + message);
-        }
-    }
-    
-    @PostMapping("/webhook")
-    public ResponseEntity<String> handleMoMoWebhook(@RequestBody Map<String, Object> callbackData) {
-        try {
-            JSONObject jsonObject = new JSONObject(callbackData);
-            paymentService.handleMoMoCallback(jsonObject);
-            return ResponseEntity.ok("OK");
-        } catch (Exception e) {
-            return ResponseEntity.internalServerError().body("Error processing webhook");
+            e.printStackTrace();
+            return ResponseEntity.badRequest().build();
         }
     }
 }
-
-
-
-
