@@ -1,7 +1,4 @@
-import React, { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
-import Navigation from '../Navigation'
-import { adminService } from '../../services/adminService'
+// ...existing code...
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([])
@@ -27,13 +24,11 @@ const AdminOrders = () => {
   }
 
   const handleUpdateStatus = async (orderId, newStatus) => {
-    // Tìm đơn hàng hiện tại để hiển thị thông báo phù hợp
     const currentOrder = orders.find(o => o.id === orderId)
     const currentStatus = currentOrder?.orderStatus
 
     let confirmMessage = `Bạn có chắc muốn cập nhật trạng thái đơn hàng thành "${newStatus}"?`
 
-    // Tùy chỉnh thông báo dựa trên hành động
     if (newStatus === 'CANCELLED') {
       if (currentStatus === 'SHIPPING') {
         confirmMessage = 'Bạn có chắc chắn muốn báo cáo GIAO HÀNG THẤT BẠI và hủy đơn hàng này không?'
@@ -51,6 +46,20 @@ const AdminOrders = () => {
         alert('Cập nhật trạng thái thành công!')
       } catch (error) {
         alert('Lỗi khi cập nhật trạng thái')
+        console.error(error)
+      }
+    }
+  }
+
+  const handleRequestCancel = async (orderId) => {
+    const reason = prompt("Nhập lý do hủy đơn hàng:")
+    if (reason && reason.trim()) {
+      try {
+        await adminService.requestCancelOrder(orderId, reason)
+        alert("Đã gửi yêu cầu hủy!")
+        await loadOrders()
+      } catch (error) {
+        alert("Lỗi khi gửi yêu cầu hủy")
         console.error(error)
       }
     }
@@ -153,7 +162,7 @@ const AdminOrders = () => {
                         </span>
                       </td>
                       <td>
-                        <div className="btn-group">
+                        <div className="btn-group flex-wrap">
                           {/* Trạng thái CHỜ XỬ LÝ */}
                           {order.orderStatus === 'PENDING' && (
                             <>
@@ -174,7 +183,7 @@ const AdminOrders = () => {
                             </>
                           )}
 
-                          {/* Trạng thái ĐÃ XÁC NHẬN -> Thêm nút Hủy */}
+                          {/* Trạng thái ĐÃ XÁC NHẬN */}
                           {order.orderStatus === 'CONFIRMED' && (
                             <>
                               <button
@@ -194,7 +203,7 @@ const AdminOrders = () => {
                             </>
                           )}
 
-                          {/* Trạng thái ĐANG ĐÓNG GÓI -> Thêm nút Hủy */}
+                          {/* Trạng thái ĐANG ĐÓNG GÓI */}
                           {order.orderStatus === 'PACKING' && (
                             <>
                               <button
@@ -214,7 +223,7 @@ const AdminOrders = () => {
                             </>
                           )}
 
-                          {/* Trạng thái ĐANG GIAO HÀNG -> Có nút Giao thành công & Thất bại */}
+                          {/* Trạng thái ĐANG GIAO HÀNG */}
                           {order.orderStatus === 'SHIPPING' && (
                             <>
                               <button
@@ -234,6 +243,20 @@ const AdminOrders = () => {
                             </>
                           )}
                         </div>
+
+                        {/* Nút Yêu cầu hủy cho trạng thái PENDING & CONFIRMED */}
+                        {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && (
+                          <div className="mt-2">
+                            <button 
+                              className="btn btn-sm btn-outline-danger w-100"
+                              onClick={() => handleRequestCancel(order.id)}
+                              title="Gửi yêu cầu hủy đơn hàng"
+                            >
+                              <i className="fas fa-ban me-1"></i>
+                              Yêu cầu hủy
+                            </button>
+                          </div>
+                        )}
                       </td>
                     </tr>
                   ))}
@@ -272,3 +295,4 @@ const AdminOrders = () => {
 }
 
 export default AdminOrders
+// ...existing code...

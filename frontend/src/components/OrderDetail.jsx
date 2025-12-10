@@ -154,6 +154,29 @@ const OrderDetail = () => {
                       </tr>
                     </tfoot>
                   </table>
+                  {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && (
+        <div className="mt-3">
+          <button
+            className="btn btn-outline-danger"
+            onClick={() => {
+              const reason = prompt("Nhập lý do hủy đơn hàng:")
+              if (reason && reason.trim()) {
+                orderService.requestCancel(order.id, reason)
+                  .then(() => {
+                    alert("Đã gửi yêu cầu hủy!")
+                    loadOrder() // Reload lại đơn hàng
+                  })
+                  .catch(err => {
+                    console.error(err)
+                    alert("Lỗi gửi yêu cầu")
+                  })
+              }
+            }}
+          >
+            Yêu cầu hủy đơn hàng
+          </button>
+        </div>
+      )}
                 </div>
               </div>
             </div>

@@ -80,6 +80,11 @@ const Navigation = () => {
                   </Link>
                 </li>
                 <li>
+              <Link className="dropdown-item" to="/wallet">
+                <i className="fas fa-wallet me-2"></i>Ví của tôi
+              </Link>
+            </li>
+                <li>
                   <Link className="dropdown-item" to="/orders">
                     <i className="fas fa-shopping-bag me-2"></i>Đơn hàng
                   </Link>

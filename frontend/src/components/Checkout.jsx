@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom'
 import Navigation from './Navigation'
 import { cartService } from '../services/cartService'
 import { orderService } from '../services/orderService'
+import { userService } from '../services/userService'
 import { useAuth } from '../context/AuthContext'
 import axios from 'axios'
 
@@ -13,6 +14,7 @@ const Checkout = () => {
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
+  const [walletBalance, setWalletBalance] = useState(0)
 
   // State cho địa chỉ
   const [provinces, setProvinces] = useState([])
@@ -35,7 +37,18 @@ const Checkout = () => {
   useEffect(() => {
     loadCart()
     fetchProvinces()
+    fetchWalletBalance()
   }, [])
+
+  const fetchWalletBalance = async () => {
+    try {
+      const profile = await userService.getProfile()
+      setWalletBalance(profile.balance || 0)
+    } catch (error) {
+      console.error('Lỗi tải số dư ví:', error)
+      setWalletBalance(0)
+    }
+  }
 
   const loadCart = async () => {
     try {
@@ -58,7 +71,7 @@ const Checkout = () => {
     }
   }
 
-  // === DÙNG API provinces.open-api.vn (Ổn định, không lỗi CORS/404) ===
+  // === API provinces.open-api.vn ===
   const fetchProvinces = async () => {
     try {
       const response = await axios.get('https://provinces.open-api.vn/api/p/')
@@ -121,7 +134,6 @@ const Checkout = () => {
       shippingWard: wardName
     })
   }
-  // ==========================================================
 
   const handleChange = (e) => {
     setFormData({ ...formData, [e.target.name]: e.target.value })
@@ -132,14 +144,19 @@ const Checkout = () => {
     setProcessing(true)
 
     try {
-      // 1. Tạo đơn hàng trước (với trạng thái PENDING)
-      const orderData = await orderService.createOrder(formData) // API này trả về thông tin Order vừa tạo
+      // Kiểm tra số dư ví nếu chọn WALLET
+      if (formData.paymentMethod === 'WALLET' && walletBalance < total) {
+        alert('Số dư ví không đủ! Vui lòng nạp thêm tiền hoặc chọn phương thức thanh toán khác.')
+        setProcessing(false)
+        return
+      }
+
+      // 1. Tạo đơn hàng
+      const orderData = await orderService.createOrder(formData)
       
       if (formData.paymentMethod === 'MOMO') {
         // 2. Nếu chọn MoMo -> Gọi API lấy link thanh toán
         try {
-          // Lưu ý: orderData phải chứa id của đơn hàng (kiểm tra lại API createOrder trả về gì)
-          // Giả sử API createOrder trả về object Order
           const response = await axios.post(`http://localhost:8082/api/payment/create-momo/${orderData.id}`)
           
           if (response.data && response.data.payUrl) {
@@ -154,9 +171,20 @@ const Checkout = () => {
           alert('Tạo đơn hàng thành công nhưng lỗi kết nối MoMo. Vui lòng thanh toán lại trong đơn hàng.')
           navigate('/orders')
         }
+      } else if (formData.paymentMethod === 'WALLET') {
+        // 3. Nếu chọn WALLET -> Gọi API thanh toán từ ví
+        try {
+          await axios.post(`http://localhost:8082/api/wallet/pay-order/${orderData.id}`)
+          alert('Thanh toán thành công từ ví cá nhân!')
+          navigate('/orders')
+        } catch (walletError) {
+          console.error('Lỗi thanh toán ví:', walletError)
+          alert('Lỗi khi thanh toán từ ví: ' + (walletError.response?.data?.message || walletError.message))
+          navigate('/orders')
+        }
       } else {
-        // Nếu COD
-        alert('Đặt hàng thành công!')
+        // COD
+        alert('Đặt hàng thành công! Vui lòng thanh toán khi nhận hàng.')
         navigate('/orders')
       }
       
@@ -206,7 +234,7 @@ const Checkout = () => {
                     </div>
                   </div>
 
-                  {/* === DROP-DOWN ĐỊA CHỈ (Dùng code thay vì id) === */}
+                  {/* DROP-DOWN ĐỊA CHỈ */}
                   <div className="row">
                     <div className="col-md-4 mb-3">
                       <label className="form-label">Tỉnh/Thành <span className="text-danger">*</span></label>
@@ -236,7 +264,6 @@ const Checkout = () => {
                       </select>
                     </div>
                   </div>
-                  {/* ============================================================== */}
                   
                   <div className="mb-3">
                     <label className="form-label">Địa chỉ chi tiết <span className="text-danger">*</span></label>
@@ -280,25 +307,53 @@ const Checkout = () => {
 
                   <h6 className="mb-3">Phương thức thanh toán</h6>
                   <div className="mb-3">
+                    {/* Option COD */}
                     <div className="form-check mb-2">
                       <input className="form-check-input" type="radio" name="paymentMethod" 
                              id="paymentCOD" value="COD" 
                              checked={formData.paymentMethod === 'COD'} onChange={handleChange} />
                       <label className="form-check-label" htmlFor="paymentCOD">
+                        <i className="fas fa-home me-2"></i>
                         Thanh toán khi nhận hàng (COD)
                       </label>
                     </div>
-                    <div className="form-check">
+
+                    {/* Option MOMO */}
+                    <div className="form-check mb-2">
                       <input className="form-check-input" type="radio" name="paymentMethod" 
                              id="paymentMOMO" value="MOMO" 
                              checked={formData.paymentMethod === 'MOMO'} onChange={handleChange} />
-                      <label className="form-check-label text-pink" htmlFor="paymentMOMO">
-                        Thanh toán qua Ví MoMo
+                      <label className="form-check-label" htmlFor="paymentMOMO">
+                        <i className="fab fa-app-store me-2"></i>
+                        <span style={{ color: '#A4236B' }}>Ví MoMo</span>
+                      </label>
+                    </div>
+
+                    {/* Option WALLET (Mới) */}
+                    <div className="form-check">
+                      <input 
+                        className="form-check-input" 
+                        type="radio" 
+                        name="paymentMethod" 
+                        id="paymentWALLET"
+                        value="WALLET" 
+                        onChange={handleChange} 
+                        checked={formData.paymentMethod === 'WALLET'} 
+                        disabled={walletBalance < total}
+                      />
+                      <label className="form-check-label" htmlFor="paymentWALLET">
+                        <i className="fas fa-wallet me-2"></i>
+                        Ví cá nhân
+                        <span className="fw-bold text-success ms-2">{formatPrice(walletBalance)}</span>
+                        {walletBalance < total && (
+                          <span className="text-danger ms-2 small">(Không đủ số dư)</span>
+                        )}
                       </label>
                     </div>
                   </div>
 
                   <button type="submit" className="btn btn-success w-100 btn-lg" disabled={processing}>
+                    <i className={`fas ${processing ? 'fa-spinner fa-spin' : 'fa-check-circle'} me-2`}></i>
                     {processing ? 'Đang xử lý...' : 'ĐẶT HÀNG'}
                   </button>
                 </div>
