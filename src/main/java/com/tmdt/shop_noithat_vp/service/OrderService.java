@@ -41,7 +41,7 @@ public class OrderService {
     private EmailService emailService;
 
     @Autowired
-    private WalletService walletService; // Inject WalletService
+    private WalletService walletService;
     
     @Transactional
     public Order createOrder(Long userId, String customerName, String customerPhone, 
@@ -74,7 +74,6 @@ public class OrderService {
         
         BigDecimal subtotal = BigDecimal.ZERO;
         for (CartItem cartItem : cartItems) {
-            // Kiểm tra tồn kho trước
             Product product = cartItem.getProduct();
             if (product.getStockQuantity() < cartItem.getQuantity()) {
                 throw new RuntimeException("Sản phẩm " + product.getName() + " không đủ số lượng tồn kho!");
@@ -91,7 +90,6 @@ public class OrderService {
             
             subtotal = subtotal.add(cartItem.getTotalPrice());
             
-            // Trừ tồn kho
             product.setStockQuantity(product.getStockQuantity() - cartItem.getQuantity());
             product.setSoldCount(product.getSoldCount() + cartItem.getQuantity());
             productRepository.save(product);
@@ -113,38 +111,29 @@ public class OrderService {
                 } else {
                     discountAmount = voucher.getDiscountValue();
                 }
-                // Tăng số lần sử dụng voucher
                 voucher.setUsedCount(voucher.getUsedCount() + 1);
                 voucherRepository.save(voucher);
             }
         }
         order.setDiscountAmount(discountAmount);
         
-        // Shipping fee
         BigDecimal shippingFee = calculateShippingFee(shippingProvince);
         order.setShippingFee(shippingFee);
         
-        // Tổng tiền cuối cùng
         BigDecimal totalAmount = subtotal.subtract(discountAmount).add(shippingFee);
         if (totalAmount.compareTo(BigDecimal.ZERO) < 0) totalAmount = BigDecimal.ZERO;
         order.setTotalAmount(totalAmount);
         
         // === XỬ LÝ THANH TOÁN BẰNG VÍ ===
         if (paymentMethod == PaymentMethod.WALLET) {
-            // Gọi WalletService để trừ tiền
-            // Nếu không đủ tiền, walletService sẽ throw Exception -> Transaction Rollback (Đơn hàng không được tạo)
             walletService.payOrder(user, totalAmount, orderCode);
             order.setPaymentStatus(PaymentStatus.SUCCESS);
-            order.setOrderStatus(OrderStatus.CONFIRMED); // Tự động xác nhận nếu thanh toán luôn
+            order.setOrderStatus(OrderStatus.CONFIRMED);
         }
-        // ================================
         
         order = orderRepository.save(order);
-        
-        // Xóa giỏ hàng
         cartItemRepository.deleteByUserId(userId);
         
-        // Gửi mail xác nhận
         try {
             emailService.sendOrderConfirmationEmail(customerEmail, order.getOrderCode());
         } catch (Exception e) {
@@ -154,8 +143,6 @@ public class OrderService {
         return order;
     }
 
-    // --- CÁC PHƯƠNG THỨC MỚI CHO HỦY VÀ HOÀN TIỀN ---
-
     /**
      * Khách hàng gửi yêu cầu hủy đơn
      */
@@ -164,9 +151,8 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        // Chỉ cho phép yêu cầu hủy khi đơn mới tạo hoặc đã xác nhận (chưa giao)
         if (order.getOrderStatus() == OrderStatus.PENDING || order.getOrderStatus() == OrderStatus.CONFIRMED) {
-            order.setOrderStatus(OrderStatus.CANCEL_REQUEST);
+            order.setOrderStatus(OrderStatus.CANCEL_REQUESTED);
             String oldNote = order.getNotes() != null ? order.getNotes() : "";
             order.setNotes(oldNote + " | [Lý do hủy]: " + reason);
             return orderRepository.save(order);
@@ -176,7 +162,8 @@ public class OrderService {
     }
 
     /**
-     * Admin duyệt hủy đơn -> Hoàn tiền (nếu có) -> Hoàn tồn kho
+     * ===== SỬA LỖI Ở ĐÂY =====
+     * Admin duyệt hủy đơn -> Hoàn tiền (nếu thanh toán qua VÍ hoặc MOMO) -> Hoàn tồn kho
      */
     @Transactional
     public Order approveCancel(Long orderId) {
@@ -190,29 +177,44 @@ public class OrderService {
         for (OrderItem item : order.getOrderItems()) {
             Product product = item.getProduct();
             product.setStockQuantity(product.getStockQuantity() + item.getQuantity());
-            product.setSoldCount(product.getSoldCount() - item.getQuantity()); // Giảm lượt bán ảo
+            product.setSoldCount(product.getSoldCount() - item.getQuantity());
             productRepository.save(product);
         }
 
-        // 3. Hoàn tiền về Ví (Nếu đã thanh toán qua MOMO hoặc WALLET)
+        // 3. === SỬA LỖI: HOÀN TIỀN VỀ VÍ ===
+        // Chỉ hoàn tiền nếu đã thanh toán THÀNH CÔNG và thanh toán qua WALLET hoặc MOMO
         if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
-            walletService.refund(order.getUser(), order.getTotalAmount(), order.getOrderCode());
-            order.setPaymentStatus(PaymentStatus.REFUNDED); // Cập nhật trạng thái tiền là "Đã hoàn"
+            // Kiểm tra phương thức thanh toán
+            PaymentMethod paymentMethod = order.getPaymentMethod();
+            
+            if (paymentMethod == PaymentMethod.WALLET || paymentMethod == PaymentMethod.MOMO) {
+                // Hoàn tiền về ví user
+                walletService.refund(order.getUser(), order.getTotalAmount(), order.getOrderCode());
+                order.setPaymentStatus(PaymentStatus.REFUNDED);
+                
+                System.out.println("✅ Đã hoàn " + order.getTotalAmount() + " VND vào ví user " + order.getUser().getUsername());
+            } else if (paymentMethod == PaymentMethod.COD) {
+                // COD không cần hoàn tiền về ví (vì chưa thu tiền)
+                order.setPaymentStatus(PaymentStatus.REFUNDED); // Đánh dấu là đã xử lý
+                System.out.println("ℹ️ Đơn COD - Không cần hoàn tiền về ví");
+            }
+        } else {
+            // Nếu chưa thanh toán (PENDING/FAILED) -> Chỉ hủy đơn, không hoàn tiền
+            System.out.println("ℹ️ Đơn hàng chưa thanh toán - Chỉ hủy đơn, không hoàn tiền");
         }
 
         return orderRepository.save(order);
     }
 
     /**
-     * Admin từ chối hủy -> Quay lại trạng thái cũ (CONFIRMED)
+     * Admin từ chối hủy -> Quay lại trạng thái cũ
      */
     @Transactional
     public Order rejectCancel(Long orderId, String reason) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
 
-        if (order.getOrderStatus() == OrderStatus.CANCEL_REQUEST) {
-            // Quay về CONFIRMED để tiếp tục xử lý
+        if (order.getOrderStatus() == OrderStatus.CANCEL_REQUESTED) {
             order.setOrderStatus(OrderStatus.CONFIRMED);
             String oldNote = order.getNotes() != null ? order.getNotes() : "";
             order.setNotes(oldNote + " | [Admin từ chối hủy]: " + reason);
@@ -222,15 +224,12 @@ public class OrderService {
         }
     }
 
-    // --- CÁC PHƯƠNG THỨC CŨ GIỮ NGUYÊN HOẶC TINH CHỈNH ---
-
     @Transactional
     public Order updateOrderStatus(Long orderId, OrderStatus status) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         
-        // Nếu chuyển sang CANCELLED thủ công (không qua quy trình approveCancel)
-        // Cũng nên gọi logic hoàn tiền/hoàn kho tương tự approveCancel
+        // Nếu chuyển sang CANCELLED thủ công -> Gọi approveCancel
         if (status == OrderStatus.CANCELLED) {
             return approveCancel(orderId); 
         }
@@ -247,7 +246,6 @@ public class OrderService {
     
     @Transactional
     public Order updateOrderStatus(Long orderId, String statusStr) {
-        // Handle custom status strings from frontend if needed, or mapping
         try {
             OrderStatus status = OrderStatus.valueOf(statusStr.toUpperCase());
             return updateOrderStatus(orderId, status);
