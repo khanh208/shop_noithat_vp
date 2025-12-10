@@ -10,6 +10,7 @@ import org.springframework.web.client.RestTemplate;
 
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
+import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
@@ -37,15 +38,28 @@ public class MoMoService {
     @Value("${momo.ipn-url}")
     private String ipnUrl;
 
+    // Tạo thanh toán Mua hàng
     public Map<String, Object> createPayment(Order order) throws Exception {
         String orderId = order.getOrderCode();
         String orderInfo = "Thanh toan don hang " + orderId;
-        String requestId = String.valueOf(System.currentTimeMillis());
-        String amount = String.valueOf(order.getTotalAmount().longValue()); // MoMo dùng số nguyên (VND)
-        String requestType = "captureWallet";
-        String extraData = ""; // Có thể để trống
+        BigDecimal amount = order.getTotalAmount();
+        return sendRequestToMoMo(orderId, orderInfo, amount);
+    }
 
-        // 1. Tạo chuỗi Raw Signature (Quy tắc của MoMo: sort a-z)
+    // === THÊM HÀM NÀY ĐỂ SỬA LỖI ===
+    // Tạo thanh toán Nạp tiền (Deposit)
+    public Map<String, Object> createDepositPayment(String orderId, BigDecimal amount) throws Exception {
+        String orderInfo = "Nap tien vao vi: " + orderId;
+        return sendRequestToMoMo(orderId, orderInfo, amount);
+    }
+
+    // Hàm chung xử lý gửi request
+    private Map<String, Object> sendRequestToMoMo(String orderId, String orderInfo, BigDecimal amountVal) throws Exception {
+        String requestId = String.valueOf(System.currentTimeMillis());
+        String amount = String.valueOf(amountVal.longValue());
+        String requestType = "captureWallet";
+        String extraData = "";
+
         String rawHash = "accessKey=" + accessKey +
                 "&amount=" + amount +
                 "&extraData=" + extraData +
@@ -57,10 +71,8 @@ public class MoMoService {
                 "&requestId=" + requestId +
                 "&requestType=" + requestType;
 
-        // 2. Ký HmacSHA256
         String signature = hmacSHA256(rawHash, secretKey);
 
-        // 3. Tạo JSON Request Body
         Map<String, String> map = new HashMap<>();
         map.put("partnerCode", partnerCode);
         map.put("partnerName", "Shop Noi That VP");
@@ -76,27 +88,19 @@ public class MoMoService {
         map.put("requestType", requestType);
         map.put("signature", signature);
 
-        // 4. Gửi Request sang MoMo
         RestTemplate restTemplate = new RestTemplate();
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(MediaType.APPLICATION_JSON);
         
         HttpEntity<Map<String, String>> request = new HttpEntity<>(map, headers);
-        
-        // Nhận kết quả từ MoMo (chứa payUrl)
-        Map<String, Object> response = restTemplate.postForObject(momoEndpoint, request, Map.class);
-        
-        return response;
+        return restTemplate.postForObject(momoEndpoint, request, Map.class);
     }
 
-    // Hàm tiện ích mã hóa
     private String hmacSHA256(String data, String key) throws NoSuchAlgorithmException, InvalidKeyException {
         SecretKeySpec secretKeySpec = new SecretKeySpec(key.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
         Mac mac = Mac.getInstance("HmacSHA256");
         mac.init(secretKeySpec);
         byte[] rawHmac = mac.doFinal(data.getBytes(StandardCharsets.UTF_8));
-        
-        // Chuyển byte array sang Hex String
         StringBuilder hexString = new StringBuilder();
         for (byte b : rawHmac) {
             String hex = Integer.toHexString(0xff & b);

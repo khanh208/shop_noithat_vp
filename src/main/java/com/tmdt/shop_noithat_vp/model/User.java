@@ -7,6 +7,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import java.math.BigDecimal;
 
 import java.util.HashSet;
 import java.util.Set;
@@ -61,6 +62,8 @@ public class User extends BaseEntity {
     @Column(name = "avatar_url")
     private String avatarUrl;
     
+    @Column(name = "balance", precision = 19, scale = 2)
+    private BigDecimal balance = BigDecimal.ZERO;
     // === THÊM @JsonIgnore VÀO CÁC DANH SÁCH DƯỚI ĐÂY ===
     
     @JsonIgnore

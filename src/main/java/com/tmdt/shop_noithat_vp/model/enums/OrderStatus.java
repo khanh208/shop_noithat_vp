@@ -6,7 +6,8 @@ public enum OrderStatus {
     PACKING,           // Đang đóng gói
     SHIPPING,          // Đang vận chuyển
     DELIVERED,         // Giao thành công
-    CANCELLED          // Hủy
+    CANCELLED,          // Hủy
+    CANCEL_REQUESTED   // Yêu cầu hủy
 }
 
 
