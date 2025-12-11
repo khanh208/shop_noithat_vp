@@ -10,6 +10,7 @@ const AdminDashboard = () => {
   const [ordersByStatus, setOrdersByStatus] = useState({})
   const [revenueByCategory, setRevenueByCategory] = useState([])
   const [loading, setLoading] = useState(true)
+  const [exporting, setExporting] = useState(false)
 
   useEffect(() => {
     loadDashboardData()
@@ -45,6 +46,55 @@ const AdminDashboard = () => {
     }
   }
 
+  // --- HÀM XỬ LÝ EXPORT REPORT ---
+  const handleExport = async (reportType) => {
+    if (exporting) return;
+
+    // Mặc định lấy dữ liệu 30 ngày gần nhất
+    const endDate = new Date();
+    const startDate = new Date();
+    startDate.setDate(startDate.getDate() - 30);
+
+    const confirmMessage = `Bạn có chắc muốn xuất báo cáo "${reportType === 'revenue' ? 'Doanh thu' : 'Sản phẩm'}" (Chỉ tính đơn giao thành công) trong 30 ngày gần nhất?`;
+    if (!window.confirm(confirmMessage)) return;
+
+    setExporting(true);
+    try {
+      const token = localStorage.getItem('token');
+      // Gọi API với responseType là blob để nhận file binary
+      const response = await axios.get('http://localhost:8082/api/admin/analytics/export-report', {
+        headers: { Authorization: `Bearer ${token}` },
+        params: {
+          reportType,
+          startDate: startDate.toISOString(),
+          endDate: endDate.toISOString()
+        },
+        responseType: 'blob' 
+      });
+
+      // Tạo URL download
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      
+      const dateStr = new Date().toISOString().slice(0, 10);
+      const fileName = `BaoCao_${reportType === 'revenue' ? 'DoanhThu' : 'SanPham'}_${dateStr}.xlsx`;
+      link.setAttribute('download', fileName);
+      
+      document.body.appendChild(link);
+      link.click();
+      
+      link.parentNode.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+    } catch (error) {
+      console.error('Lỗi xuất báo cáo:', error);
+      alert('Xuất báo cáo thất bại. Vui lòng thử lại.');
+    } finally {
+      setExporting(false);
+    }
+  }
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price) + ' đ'
   }
@@ -56,7 +106,8 @@ const AdminDashboard = () => {
       'PACKING': 'primary',
       'SHIPPING': 'primary',
       'DELIVERED': 'success',
-      'CANCELLED': 'danger'
+      'CANCELLED': 'danger',
+      'CANCEL_REQUESTED': 'warning'
     }
     return badges[status] || 'secondary'
   }
@@ -67,8 +118,9 @@ const AdminDashboard = () => {
       'CONFIRMED': 'Đã xác nhận',
       'PACKING': 'Đang đóng gói',
       'SHIPPING': 'Đang giao hàng',
-      'DELIVERED': 'Đã giao hàng',
-      'CANCELLED': 'Đã hủy'
+      'DELIVERED': 'Giao thành công',
+      'CANCELLED': 'Đã hủy',
+      'CANCEL_REQUESTED': 'Yêu cầu hủy'
     }
     return texts[status] || status
   }
@@ -97,7 +149,6 @@ const AdminDashboard = () => {
             Dashboard Quản Trị
           </h2>
           <div>
-            {/* Đã thêm nút Quản lý danh mục */}
             <Link to="/admin/categories" className="btn btn-info me-2 text-white">
               <i className="fas fa-tags me-2"></i>Quản lý danh mục
             </Link>
@@ -118,7 +169,7 @@ const AdminDashboard = () => {
               <div className="card-body">
                 <div className="d-flex justify-content-between align-items-center">
                   <div>
-                    <h6 className="text-muted mb-2">Tổng doanh thu</h6>
+                    <h6 className="text-muted mb-2">Tổng doanh thu (Thực tế)</h6>
                     <h4 className="mb-0 text-primary">{formatPrice(overview?.totalRevenue || 0)}</h4>
                     <small className="text-success">
                       <i className="fas fa-arrow-up"></i> Tháng này: {formatPrice(overview?.monthlyRevenue || 0)}
@@ -227,7 +278,7 @@ const AdminDashboard = () => {
               <div className="card-header bg-primary text-white">
                 <h5 className="mb-0">
                   <i className="fas fa-fire me-2"></i>
-                  Top 5 Sản Phẩm Bán Chạy
+                  Top 5 Sản Phẩm Bán Chạy (Đã giao)
                 </h5>
               </div>
               <div className="card-body">
@@ -308,7 +359,7 @@ const AdminDashboard = () => {
               <div className="card-header bg-info text-white">
                 <h5 className="mb-0">
                   <i className="fas fa-tags me-2"></i>
-                  Doanh Thu Theo Danh Mục
+                  Doanh Thu Theo Danh Mục (Đã giao)
                 </h5>
               </div>
               <div className="card-body">
@@ -377,7 +428,6 @@ const AdminDashboard = () => {
                     </Link>
                   </div>
                   
-                  {/* Đã thêm nút Thêm danh mục mới */}
                   <div className="col-md-3 mb-3">
                     <Link to="/admin/categories/new" className="btn btn-outline-info w-100">
                       <i className="fas fa-folder-plus me-2"></i>
@@ -398,13 +448,33 @@ const AdminDashboard = () => {
                     </Link>
                   </div>
                   <div className="col-md-3 mb-3">
-                    <button 
-                      className="btn btn-outline-success w-100"
-                      onClick={() => alert('Tính năng export đang được phát triển')}
-                    >
-                      <i className="fas fa-file-excel me-2"></i>
-                      Xuất báo cáo
-                    </button>
+                    <div className="btn-group w-100">
+                      <button 
+                        className="btn btn-outline-success dropdown-toggle" 
+                        type="button" 
+                        data-bs-toggle="dropdown" 
+                        aria-expanded="false"
+                        disabled={exporting}
+                      >
+                        {exporting ? (
+                          <><span className="spinner-border spinner-border-sm me-2"></span>Đang xuất...</>
+                        ) : (
+                          <><i className="fas fa-file-excel me-2"></i>Xuất báo cáo</>
+                        )}
+                      </button>
+                      <ul className="dropdown-menu">
+                        <li>
+                          <button className="dropdown-item" onClick={() => handleExport('revenue')}>
+                            <i className="fas fa-money-bill me-2 text-success"></i>Báo cáo Doanh thu
+                          </button>
+                        </li>
+                        <li>
+                          <button className="dropdown-item" onClick={() => handleExport('products')}>
+                            <i className="fas fa-box me-2 text-primary"></i>Báo cáo Sản phẩm
+                          </button>
+                        </li>
+                      </ul>
+                    </div>
                   </div>
                 </div>
               </div>

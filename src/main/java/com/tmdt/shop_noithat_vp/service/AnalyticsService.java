@@ -11,9 +11,14 @@ import com.tmdt.shop_noithat_vp.repository.CategoryRepository;
 import com.tmdt.shop_noithat_vp.repository.OrderRepository;
 import com.tmdt.shop_noithat_vp.repository.ProductRepository;
 import com.tmdt.shop_noithat_vp.repository.UserRepository;
+import org.apache.poi.ss.usermodel.*;
+import org.apache.poi.xssf.usermodel.XSSFWorkbook;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
+import java.io.ByteArrayOutputStream;
+import java.io.IOException;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.time.YearMonth;
@@ -46,9 +51,8 @@ public class AnalyticsService {
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = YearMonth.now().atEndOfMonth().atTime(23, 59, 59);
         
-        List<Order> orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startOfMonth, endOfMonth);
+        List<Order> orders = orderRepository.findDeliveredOrdersBetween(startOfMonth, endOfMonth);
         return orders.stream()
-                .filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED)
                 .map(Order::getTotalAmount)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
     }
@@ -60,7 +64,6 @@ public class AnalyticsService {
     public long getMonthlyOrders() {
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = YearMonth.now().atEndOfMonth().atTime(23, 59, 59);
-        
         return orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startOfMonth, endOfMonth).size();
     }
     
@@ -70,7 +73,6 @@ public class AnalyticsService {
     
     public long getNewCustomersThisMonth() {
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
-        
         return userRepository.findAll().stream()
                 .filter(u -> u.getCreatedAt().isAfter(startOfMonth))
                 .filter(u -> u.getRole() == Role.CUSTOMER)
@@ -82,20 +84,19 @@ public class AnalyticsService {
     }
     
     public long getLowStockProductsCount() {
-        // Giả sử mức tồn kho thấp là 10
         return productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10).size();
     }
     
     // ========== DOANH THU THEO THỜI GIAN ==========
     
     public Map<String, Object> getRevenueByTime(LocalDateTime startDate, LocalDateTime endDate, String groupBy) {
-        List<Order> orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startDate, endDate)
-                .stream()
-                .filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED)
-                .collect(Collectors.toList());
+        // Xử lý null date
+        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+
+        List<Order> orders = orderRepository.findDeliveredOrdersBetween(start, end);
         
-        Map<String, BigDecimal> revenueMap = new TreeMap<>(); // TreeMap để sắp xếp theo key (thời gian)
-        
+        Map<String, BigDecimal> revenueMap = new TreeMap<>();
         for (Order order : orders) {
             String key = formatDateByGroupBy(order.getCreatedAt(), groupBy);
             revenueMap.merge(key, order.getTotalAmount(), BigDecimal::add);
@@ -105,69 +106,49 @@ public class AnalyticsService {
         result.put("labels", new ArrayList<>(revenueMap.keySet()));
         result.put("data", new ArrayList<>(revenueMap.values()));
         result.put("groupBy", groupBy);
-        
         return result;
     }
     
     private String formatDateByGroupBy(LocalDateTime dateTime, String groupBy) {
         if (groupBy == null) return dateTime.toLocalDate().toString();
-        
         switch (groupBy.toLowerCase()) {
-            case "day":
-                return dateTime.toLocalDate().toString();
-            case "week":
-                int weekOfYear = dateTime.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
-                return dateTime.getYear() + "-W" + weekOfYear;
-            case "month":
-                return dateTime.getYear() + "-" + String.format("%02d", dateTime.getMonthValue());
-            case "year":
-                return String.valueOf(dateTime.getYear());
-            default:
-                return dateTime.toLocalDate().toString();
+            case "day": return dateTime.toLocalDate().toString();
+            case "week": 
+                int week = dateTime.get(java.time.temporal.WeekFields.ISO.weekOfWeekBasedYear());
+                return dateTime.getYear() + "-W" + week;
+            case "month": return dateTime.getYear() + "-" + String.format("%02d", dateTime.getMonthValue());
+            case "year": return String.valueOf(dateTime.getYear());
+            default: return dateTime.toLocalDate().toString();
         }
     }
     
     // ========== TOP SẢN PHẨM BÁN CHẠY ==========
     
     public List<Map<String, Object>> getTopSellingProducts(int limit, LocalDateTime startDate, LocalDateTime endDate) {
-        List<Order> orders;
+        // Xử lý null date
+        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+
+        List<Object[]> results = orderRepository.findTopSellingProducts(start, end, PageRequest.of(0, limit));
         
-        if (startDate != null && endDate != null) {
-            orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startDate, endDate);
-        } else {
-            orders = orderRepository.findByIsDeletedFalse(org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<Map<String, Object>> response = new ArrayList<>();
+        for (Object[] row : results) {
+            Product product = (Product) row[0];
+            Long quantitySold = (Long) row[1];
+            BigDecimal revenue = (BigDecimal) row[2];
+            
+            Map<String, Object> map = new HashMap<>();
+            map.put("productId", product.getId());
+            map.put("productName", product.getName());
+            map.put("quantitySold", quantitySold);
+            map.put("revenue", revenue);
+            map.put("price", product.getSalePrice() != null ? product.getSalePrice() : product.getPrice());
+            response.add(map);
         }
-        
-        Map<Product, Integer> productSalesMap = new HashMap<>();
-        Map<Product, BigDecimal> productRevenueMap = new HashMap<>();
-        
-        for (Order order : orders) {
-            if (order.getOrderStatus() == OrderStatus.DELIVERED) {
-                for (OrderItem item : order.getOrderItems()) {
-                    Product product = item.getProduct();
-                    productSalesMap.merge(product, item.getQuantity(), Integer::sum);
-                    productRevenueMap.merge(product, item.getTotalPrice(), BigDecimal::add);
-                }
-            }
-        }
-        
-        return productSalesMap.entrySet().stream()
-                .sorted(Map.Entry.<Product, Integer>comparingByValue().reversed())
-                .limit(limit)
-                .map(entry -> {
-                    Map<String, Object> map = new HashMap<>();
-                    Product product = entry.getKey();
-                    map.put("productId", product.getId());
-                    map.put("productName", product.getName());
-                    map.put("quantitySold", entry.getValue());
-                    map.put("revenue", productRevenueMap.get(product));
-                    map.put("price", product.getSalePrice() != null ? product.getSalePrice() : product.getPrice());
-                    return map;
-                })
-                .collect(Collectors.toList());
+        return response;
     }
     
-    // ========== THỐNG KÊ ĐƠN HÀNG THEO TRẠNG THÁI ==========
+    // ========== THỐNG KÊ TRẠNG THÁI ==========
     
     public long getOrderCountByStatus(OrderStatus status) {
         return orderRepository.countByOrderStatusAndIsDeletedFalse(status);
@@ -176,57 +157,40 @@ public class AnalyticsService {
     // ========== DOANH THU THEO DANH MỤC ==========
     
     public List<Map<String, Object>> getRevenueByCategory(LocalDateTime startDate, LocalDateTime endDate) {
-        List<Order> orders;
+        // Xử lý null date
+        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+
+        List<Object[]> results = orderRepository.findRevenueByCategory(start, end);
         
-        if (startDate != null && endDate != null) {
-            orders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startDate, endDate);
-        } else {
-            orders = orderRepository.findByIsDeletedFalse(org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<Map<String, Object>> response = new ArrayList<>();
+        for (Object[] row : results) {
+            Category category = (Category) row[0];
+            BigDecimal revenue = (BigDecimal) row[1];
+            Long quantity = (Long) row[2];
+            
+            Map<String, Object> map = new HashMap<>();
+            map.put("categoryId", category.getId());
+            map.put("categoryName", category.getName());
+            map.put("revenue", revenue);
+            map.put("productsSold", quantity);
+            response.add(map);
         }
-        
-        Map<Category, BigDecimal> categoryRevenueMap = new HashMap<>();
-        Map<Category, Integer> categoryCountMap = new HashMap<>();
-        
-        for (Order order : orders) {
-            if (order.getOrderStatus() == OrderStatus.DELIVERED) {
-                for (OrderItem item : order.getOrderItems()) {
-                    Category category = item.getProduct().getCategory();
-                    if (category != null) {
-                        categoryRevenueMap.merge(category, item.getTotalPrice(), BigDecimal::add);
-                        categoryCountMap.merge(category, item.getQuantity(), Integer::sum);
-                    }
-                }
-            }
-        }
-        
-        return categoryRevenueMap.entrySet().stream()
-                .sorted(Map.Entry.<Category, BigDecimal>comparingByValue().reversed())
-                .map(entry -> {
-                    Map<String, Object> map = new HashMap<>();
-                    Category category = entry.getKey();
-                    map.put("categoryId", category.getId());
-                    map.put("categoryName", category.getName());
-                    map.put("revenue", entry.getValue());
-                    map.put("productsSold", categoryCountMap.get(category));
-                    return map;
-                })
-                .collect(Collectors.toList());
+        return response;
     }
     
     // ========== TOP KHÁCH HÀNG ==========
     
     public List<Map<String, Object>> getTopCustomers(int limit) {
-        List<Order> orders = orderRepository.findByIsDeletedFalse(org.springframework.data.domain.Pageable.unpaged()).getContent();
+        List<Order> orders = orderRepository.findByOrderStatusAndIsDeletedFalse(OrderStatus.DELIVERED, org.springframework.data.domain.Pageable.unpaged()).getContent();
         
         Map<User, BigDecimal> customerSpendingMap = new HashMap<>();
         Map<User, Long> customerOrderCountMap = new HashMap<>();
         
         for (Order order : orders) {
-            if (order.getOrderStatus() == OrderStatus.DELIVERED) {
-                User user = order.getUser();
-                customerSpendingMap.merge(user, order.getTotalAmount(), BigDecimal::add);
-                customerOrderCountMap.merge(user, 1L, Long::sum);
-            }
+            User user = order.getUser();
+            customerSpendingMap.merge(user, order.getTotalAmount(), BigDecimal::add);
+            customerOrderCountMap.merge(user, 1L, Long::sum);
         }
         
         return customerSpendingMap.entrySet().stream()
@@ -249,91 +213,125 @@ public class AnalyticsService {
     // ========== TỶ LỆ CHUYỂN ĐỔI ==========
     
     public Map<String, Object> getConversionRate(LocalDateTime startDate, LocalDateTime endDate) {
-        // Tổng số đơn hàng được tạo
-        List<Order> allOrders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(startDate, endDate);
-        long totalOrders = allOrders.size();
+        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
+        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+
+        List<Order> allOrders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(start, end);
+        long total = allOrders.size();
+        long completed = allOrders.stream().filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED).count();
+        long cancelled = allOrders.stream().filter(o -> o.getOrderStatus() == OrderStatus.CANCELLED).count();
         
-        // Đơn hàng thành công
-        long completedOrders = allOrders.stream()
-                .filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED)
-                .count();
-        
-        // Đơn hàng bị hủy
-        long cancelledOrders = allOrders.stream()
-                .filter(o -> o.getOrderStatus() == OrderStatus.CANCELLED)
-                .count();
-        
-        // Tính tỷ lệ
-        double conversionRate = totalOrders > 0 ? (completedOrders * 100.0 / totalOrders) : 0;
-        double cancellationRate = totalOrders > 0 ? (cancelledOrders * 100.0 / totalOrders) : 0;
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("totalOrders", totalOrders);
-        result.put("completedOrders", completedOrders);
-        result.put("cancelledOrders", cancelledOrders);
-        result.put("conversionRate", Math.round(conversionRate * 100.0) / 100.0);
-        result.put("cancellationRate", Math.round(cancellationRate * 100.0) / 100.0);
-        
-        return result;
+        Map<String, Object> res = new HashMap<>();
+        res.put("totalOrders", total);
+        res.put("completedOrders", completed);
+        res.put("cancelledOrders", cancelled);
+        res.put("conversionRate", total > 0 ? Math.round(completed * 100.0 / total * 100.0) / 100.0 : 0);
+        res.put("cancellationRate", total > 0 ? Math.round(cancelled * 100.0 / total * 100.0) / 100.0 : 0);
+        return res;
     }
     
     // ========== SẢN PHẨM TỒN KHO THẤP ==========
-    
+
     public List<Map<String, Object>> getLowStockProducts() {
-        List<Product> products = productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10);
-        
-        return products.stream()
-                .map(product -> {
-                    Map<String, Object> map = new HashMap<>();
-                    map.put("productId", product.getId());
-                    map.put("productName", product.getName());
-                    map.put("sku", product.getSku());
-                    map.put("stockQuantity", product.getStockQuantity());
-                    map.put("minStockLevel", product.getMinStockLevel());
-                    map.put("category", product.getCategory().getName());
-                    return map;
-                })
-                .collect(Collectors.toList());
+        return productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10).stream().map(p -> {
+            Map<String, Object> m = new HashMap<>();
+            m.put("productId", p.getId());
+            m.put("productName", p.getName());
+            m.put("sku", p.getSku());
+            m.put("stockQuantity", p.getStockQuantity());
+            m.put("minStockLevel", p.getMinStockLevel());
+            m.put("category", p.getCategory().getName());
+            return m;
+        }).collect(Collectors.toList());
     }
     
-    // ========== EXPORT REPORT ==========
+    // ========== EXPORT REPORT (EXCEL) ==========
     
     public byte[] exportReport(String reportType, LocalDateTime startDate, LocalDateTime endDate) {
-        // Đây là placeholder - trong thực tế bạn sẽ dùng Apache POI để tạo Excel
-        // Ví dụ đơn giản trả về CSV
-        String csvData = generateCSVReport(reportType, startDate, endDate);
-        return csvData.getBytes();
+        try (Workbook workbook = new XSSFWorkbook(); 
+             ByteArrayOutputStream out = new ByteArrayOutputStream()) {
+            
+            Sheet sheet = workbook.createSheet(reportType);
+            CellStyle headerStyle = createHeaderStyle(workbook);
+            CellStyle currencyStyle = createCurrencyStyle(workbook);
+
+            int rowIdx = 0;
+            switch (reportType.toLowerCase()) {
+                case "revenue":
+                    rowIdx = generateRevenueReport(sheet, headerStyle, currencyStyle, startDate, endDate);
+                    break;
+                case "products":
+                    rowIdx = generateProductReport(sheet, headerStyle, currencyStyle, startDate, endDate);
+                    break;
+                default:
+                    Row row = sheet.createRow(0);
+                    row.createCell(0).setCellValue("Report type not supported");
+            }
+            
+            for (int i = 0; i < 5; i++) sheet.autoSizeColumn(i);
+            workbook.write(out);
+            return out.toByteArray();
+        } catch (IOException e) {
+            throw new RuntimeException("Excel Error: " + e.getMessage());
+        }
+    }
+
+    private int generateRevenueReport(Sheet sheet, CellStyle headerStyle, CellStyle currencyStyle, LocalDateTime start, LocalDateTime end) {
+        createHeader(sheet, headerStyle, 0, "Thời gian", "Doanh thu (VNĐ)");
+        Map<String, Object> data = getRevenueByTime(start, end, "day");
+        List<String> labels = (List<String>) data.get("labels");
+        List<BigDecimal> values = (List<BigDecimal>) data.get("data");
+        
+        int rowIdx = 1;
+        for (int i = 0; i < labels.size(); i++) {
+            Row row = sheet.createRow(rowIdx++);
+            row.createCell(0).setCellValue(labels.get(i));
+            Cell val = row.createCell(1);
+            val.setCellValue(values.get(i).doubleValue());
+            val.setCellStyle(currencyStyle);
+        }
+        return rowIdx;
+    }
+
+    private int generateProductReport(Sheet sheet, CellStyle headerStyle, CellStyle currencyStyle, LocalDateTime start, LocalDateTime end) {
+        createHeader(sheet, headerStyle, 0, "Tên sản phẩm", "Số lượng bán (Đã giao)", "Doanh thu (VNĐ)");
+        List<Map<String, Object>> products = getTopSellingProducts(1000, start, end);
+        
+        int rowIdx = 1;
+        for (Map<String, Object> p : products) {
+            Row row = sheet.createRow(rowIdx++);
+            row.createCell(0).setCellValue((String) p.get("productName"));
+            row.createCell(1).setCellValue(Long.parseLong(p.get("quantitySold").toString()));
+            Cell rev = row.createCell(2);
+            rev.setCellValue(((BigDecimal) p.get("revenue")).doubleValue());
+            rev.setCellStyle(currencyStyle);
+        }
+        return rowIdx;
+    }
+
+    private void createHeader(Sheet sheet, CellStyle style, int rowIdx, String... headers) {
+        Row row = sheet.createRow(rowIdx);
+        for (int i = 0; i < headers.length; i++) {
+            Cell cell = row.createCell(i);
+            cell.setCellValue(headers[i]);
+            cell.setCellStyle(style);
+        }
     }
     
-    @SuppressWarnings("unchecked")
-    private String generateCSVReport(String reportType, LocalDateTime startDate, LocalDateTime endDate) {
-        StringBuilder csv = new StringBuilder();
-        
-        switch (reportType.toLowerCase()) {
-            case "revenue":
-                csv.append("Date,Revenue\n");
-                Map<String, Object> revenueData = getRevenueByTime(startDate, endDate, "day");
-                List<String> labels = (List<String>) revenueData.get("labels");
-                List<BigDecimal> data = (List<BigDecimal>) revenueData.get("data");
-                for (int i = 0; i < labels.size(); i++) {
-                    csv.append(labels.get(i)).append(",").append(data.get(i)).append("\n");
-                }
-                break;
-                
-            case "products":
-                csv.append("Product Name,Quantity Sold,Revenue\n");
-                List<Map<String, Object>> products = getTopSellingProducts(100, startDate, endDate);
-                for (Map<String, Object> product : products) {
-                    csv.append(product.get("productName")).append(",")
-                       .append(product.get("quantitySold")).append(",")
-                       .append(product.get("revenue")).append("\n");
-                }
-                break;
-                
-            default:
-                csv.append("Report not available\n");
-        }
-        
-        return csv.toString();
+    private CellStyle createHeaderStyle(Workbook wb) {
+        CellStyle style = wb.createCellStyle();
+        Font font = wb.createFont();
+        font.setBold(true);
+        style.setFont(font);
+        style.setFillForegroundColor(IndexedColors.GREY_25_PERCENT.getIndex());
+        style.setFillPattern(FillPatternType.SOLID_FOREGROUND);
+        return style;
+    }
+    
+    private CellStyle createCurrencyStyle(Workbook wb) {
+        CellStyle style = wb.createCellStyle();
+        DataFormat format = wb.createDataFormat();
+        style.setDataFormat(format.getFormat("#,##0"));
+        return style;
     }
 }

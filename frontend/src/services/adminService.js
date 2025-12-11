@@ -136,5 +136,22 @@ export const adminService = {
   deleteCategory: async (id) => {
     const response = await apiClient.delete(`/categories/${id}`)
     return response.data
+  },
+  exportReport: async (reportType, startDate, endDate) => {
+    try {
+      const response = await apiClient.get('/analytics/export-report', {
+        params: { 
+          reportType,
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString()
+        },
+        responseType: 'blob' // QUAN TRỌNG: Để nhận file binary
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error exporting report:', error)
+      throw error
+    }
   }
+
 }
