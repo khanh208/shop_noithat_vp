@@ -42,8 +42,14 @@ public class WalletService {
     // 3. Hoàn tiền (Admin hủy đơn)
     @Transactional
     public void refund(User user, BigDecimal amount, String orderCode) {
-        user.setBalance(user.getBalance().add(amount));
+        // Cộng tiền vào số dư hiện tại
+        BigDecimal currentBalance = user.getBalance();
+        user.setBalance(currentBalance.add(amount));
+        
+        // Lưu user
         userRepository.save(user);
+        
+        // Lưu lịch sử giao dịch
         createTransaction(user, amount, TransactionType.REFUND, "Hoàn tiền đơn hàng " + orderCode, orderCode);
     }
 

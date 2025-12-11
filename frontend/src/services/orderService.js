@@ -9,7 +9,7 @@ const apiClient = axios.create({
   }
 })
 
-// Interceptor 1: Tự động chèn Token vào header
+// Interceptor 1: Tự động chèn Token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -23,7 +23,7 @@ apiClient.interceptors.request.use(
   }
 )
 
-// Interceptor 2: Tự động xử lý lỗi 401 (Hết hạn token)
+// Interceptor 2: Xử lý lỗi 401
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
@@ -39,7 +39,6 @@ apiClient.interceptors.response.use(
 
 export const orderService = {
   createOrder: async (orderData) => {
-    // Truyền params đúng cách
     const response = await apiClient.post('/create', null, {
       params: orderData
     })
@@ -55,6 +54,14 @@ export const orderService = {
 
   getOrderByCode: async (orderCode) => {
     const response = await apiClient.get(`/${orderCode}`)
+    return response.data
+  },
+
+  // --- HÀM MỚI THÊM: Gửi yêu cầu hủy đơn ---
+  requestCancel: async (orderId, reason) => {
+    const response = await apiClient.post(`/${orderId}/request-cancel`, null, {
+      params: { reason }
+    })
     return response.data
   }
 }

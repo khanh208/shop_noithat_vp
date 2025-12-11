@@ -204,8 +204,11 @@ const OrderDetail = () => {
                 <div className="mb-3">
                   <label className="text-muted small">Phương thức thanh toán:</label>
                   <div className="fw-bold">{order.paymentMethod}</div>
-                  <div className={`small ${order.paymentStatus === 'SUCCESS' ? 'text-success' : 'text-warning'}`}>
-                    {order.paymentStatus === 'SUCCESS' ? '(Đã thanh toán)' : '(Chưa thanh toán)'}
+                  <div className="small">
+                    {order.paymentStatus === 'SUCCESS' && <span className="text-success">(Đã thanh toán)</span>}
+                    {order.paymentStatus === 'PENDING' && <span className="text-warning">(Chưa thanh toán)</span>}
+                    {order.paymentStatus === 'FAILED' && <span className="text-danger">(Thanh toán thất bại)</span>}
+                    {order.paymentStatus === 'REFUNDED' && <span className="text-primary fw-bold">(Đã hoàn tiền)</span>}
                   </div>
                 </div>
                 <hr />

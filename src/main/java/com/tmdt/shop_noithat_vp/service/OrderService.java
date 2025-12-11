@@ -181,22 +181,27 @@ public class OrderService {
             productRepository.save(product);
         }
 
-        // 3. === LOGIC MỚI: HOÀN TIỀN VỀ VÍ ===
-        // Chỉ hoàn tiền nếu trạng thái thanh toán là SUCCESS
+        // 3. Xử lý hoàn tiền
+        // Kiểm tra xem đơn hàng đã thanh toán thành công chưa
         if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
-            // Kiểm tra phương thức thanh toán (WALLET hoặc MOMO đều hoàn về Ví)
             PaymentMethod pm = order.getPaymentMethod();
             
+            // Chỉ hoàn tiền nếu thanh toán qua Ví hoặc MoMo
             if (pm == PaymentMethod.WALLET || pm == PaymentMethod.MOMO) {
-                // Gọi WalletService để cộng lại tiền vào ví user
-                walletService.refund(order.getUser(), order.getTotalAmount(), order.getOrderCode());
-                
-                // Cập nhật trạng thái thanh toán thành ĐÃ HOÀN TIỀN
-                order.setPaymentStatus(PaymentStatus.REFUNDED);
-                
-                System.out.println("✅ Đã hoàn " + order.getTotalAmount() + " VND vào ví user " + order.getUser().getUsername());
+                try {
+                    // Gọi service hoàn tiền
+                    walletService.refund(order.getUser(), order.getTotalAmount(), order.getOrderCode());
+                    
+                    // Cập nhật trạng thái đã hoàn tiền
+                    order.setPaymentStatus(PaymentStatus.REFUNDED);
+                    
+                    // Log để kiểm tra (sẽ hiện trong console khi chạy)
+                    System.out.println(">> REFUND SUCCESS: Order " + order.getOrderCode() + " | Amount: " + order.getTotalAmount());
+                } catch (Exception e) {
+                    // Nếu lỗi hoàn tiền, ném ra exception để rollback toàn bộ (không cho hủy đơn nếu không hoàn tiền được)
+                    throw new RuntimeException("Lỗi khi hoàn tiền vào ví: " + e.getMessage());
+                }
             } 
-            // Nếu là COD mà lỡ set SUCCESS thì có thể xử lý riêng, nhưng thường COD hủy là chưa thanh toán.
         }
 
         return orderRepository.save(order);

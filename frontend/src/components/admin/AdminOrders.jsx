@@ -30,7 +30,9 @@ const AdminOrders = () => {
     let confirmMessage = `Bạn có chắc muốn cập nhật trạng thái đơn hàng thành "${newStatus}"?`
     
     if (newStatus === 'CANCELLED') {
-        confirmMessage = 'Bạn có chắc chắn muốn HỦY đơn hàng này không? \n(Nếu đơn đã thanh toán, tiền sẽ được hoàn về Ví khách hàng)'
+        confirmMessage = 'Bạn có chắc chắn muốn DUYỆT HỦY đơn hàng này không? \n(Tiền sẽ được hoàn về Ví khách hàng nếu đã thanh toán)'
+    } else if (newStatus === 'CONFIRMED') {
+        confirmMessage = 'Bạn có chắc chắn muốn TỪ CHỐI yêu cầu hủy và tiếp tục đơn hàng?'
     }
 
     if (window.confirm(confirmMessage)) {
@@ -45,7 +47,6 @@ const AdminOrders = () => {
     }
   }
 
-  // Hàm tách lấy lý do hủy từ chuỗi notes
   const getCancelReason = (note) => {
     if (!note) return null;
     const key = "[Lý do hủy]:";
@@ -68,7 +69,7 @@ const AdminOrders = () => {
       'SHIPPING': 'primary',
       'DELIVERED': 'success',
       'CANCELLED': 'danger',
-      'CANCEL_REQUESTED': 'warning' // Màu vàng cho yêu cầu hủy
+      'CANCEL_REQUESTED': 'warning'
     }
     return badges[status] || 'secondary'
   }
@@ -82,6 +83,27 @@ const AdminOrders = () => {
       'DELIVERED': 'Giao thành công',
       'CANCELLED': 'Đã hủy',
       'CANCEL_REQUESTED': 'Yêu cầu hủy'
+    }
+    return texts[status] || status
+  }
+
+  // --- MỚI: Hàm xử lý hiển thị Trạng thái thanh toán ---
+  const getPaymentStatusBadge = (status) => {
+    const badges = {
+      'PENDING': 'warning',
+      'SUCCESS': 'success',
+      'FAILED': 'danger',
+      'REFUNDED': 'primary' // Màu xanh dương cho hoàn tiền
+    }
+    return badges[status] || 'secondary'
+  }
+
+  const getPaymentStatusText = (status) => {
+    const texts = {
+      'PENDING': 'Chưa thanh toán',
+      'SUCCESS': 'Đã thanh toán',
+      'FAILED': 'Thanh toán lỗi',
+      'REFUNDED': 'Đã hoàn tiền' // Text hiển thị
     }
     return texts[status] || status
   }
@@ -139,14 +161,12 @@ const AdminOrders = () => {
                           <strong className="text-primary">{formatPrice(order.totalAmount)}</strong>
                         </td>
                         
-                        {/* Cột Trạng thái */}
                         <td>
                           <div className="d-flex flex-column align-items-start">
                             <span className={`badge bg-${getStatusBadge(order.orderStatus)} mb-1`}>
                               {getStatusText(order.orderStatus)}
                             </span>
                             
-                            {/* Hiển thị lý do hủy nếu có */}
                             {order.orderStatus === 'CANCEL_REQUESTED' && cancelReason && (
                               <div className="mt-1 p-2 rounded border border-warning bg-warning bg-opacity-10 w-100">
                                 <small className="text-warning-emphasis fw-bold d-block">
@@ -160,25 +180,33 @@ const AdminOrders = () => {
                           </div>
                         </td>
 
+                        {/* --- CẬP NHẬT CỘT THANH TOÁN --- */}
                         <td>
-                          <span className={`badge bg-${order.paymentStatus === 'SUCCESS' ? 'success' : 'warning'}`}>
-                            {order.paymentStatus === 'SUCCESS' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                          <span className={`badge bg-${getPaymentStatusBadge(order.paymentStatus)}`}>
+                            {getPaymentStatusText(order.paymentStatus)}
                           </span>
                         </td>
                         
                         <td>
                           <div className="btn-group">
-                            {/* Nút Duyệt Hủy cho trạng thái Yêu cầu hủy */}
                             {order.orderStatus === 'CANCEL_REQUESTED' ? (
-                              <button
-                                className="btn btn-sm btn-danger"
-                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                title="Đồng ý hủy đơn"
-                              >
-                                <i className="fas fa-check me-1"></i>Duyệt Hủy
-                              </button>
+                              <>
+                                <button
+                                  className="btn btn-sm btn-success me-1"
+                                  onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
+                                  title="Đồng ý hủy đơn"
+                                >
+                                  <i className="fas fa-check me-1"></i>Duyệt
+                                </button>
+                                <button
+                                  className="btn btn-sm btn-danger"
+                                  onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')}
+                                  title="Từ chối hủy"
+                                >
+                                  <i className="fas fa-times me-1"></i>Từ chối
+                                </button>
+                              </>
                             ) : (
-                              /* Các nút trạng thái khác */
                               <>
                                 {order.orderStatus === 'PENDING' && (
                                     <button className="btn btn-sm btn-success me-1" 
@@ -225,7 +253,6 @@ const AdminOrders = () => {
               </table>
             </div>
 
-            {/* Phân trang */}
             {totalPages > 1 && (
               <nav aria-label="Page navigation" className="mt-4">
                 <ul className="pagination justify-content-center">
