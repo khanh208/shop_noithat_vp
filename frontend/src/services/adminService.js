@@ -14,11 +14,9 @@ const apiClient = axios.create({
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
-    // FIX: Kiểm tra token hợp lệ trước khi gửi
     if (token && token !== 'undefined' && token !== 'null') {
       config.headers.Authorization = `Bearer ${token}`
     } else {
-      // Nếu không có token hợp lệ, chuyển về trang login
       console.error('No valid token found. Redirecting to login...')
       window.location.href = '/login'
     }
@@ -29,12 +27,11 @@ apiClient.interceptors.request.use(
   }
 )
 
-// FIX: Thêm interceptor để xử lý lỗi 401
+// Interceptor xử lý lỗi 401
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response && error.response.status === 401) {
-      // Token hết hạn hoặc không hợp lệ
       console.error('Unauthorized. Please login again.')
       localStorage.removeItem('token')
       window.location.href = '/login'
@@ -44,13 +41,79 @@ apiClient.interceptors.response.use(
 )
 
 export const adminService = {
-  // --- Dashboard ---
+  // =================================================================
+  // THỐNG KÊ & BÁO CÁO (ANALYTICS)
+  // =================================================================
+
+  // 1. Thống kê cơ bản (Số lượng sản phẩm, đơn hàng, user...) - Không lọc ngày
   getDashboardStats: async () => {
     const response = await apiClient.get('/dashboard/stats')
     return response.data
   },
 
-  // --- Products (Sản phẩm) ---
+  // 2. Tổng quan doanh thu, đơn hàng (Card hiển thị) - Có thể mở rộng lọc ngày nếu Backend hỗ trợ
+  getDashboardOverview: async () => {
+    const response = await apiClient.get('/analytics/overview')
+    return response.data
+  },
+
+  // 3. Top sản phẩm bán chạy (Có lọc theo ngày)
+  getTopSellingProducts: async (limit = 5, startDate, endDate) => {
+    const params = { limit }
+    if (startDate) params.startDate = startDate.toISOString()
+    if (endDate) params.endDate = endDate.toISOString()
+    
+    const response = await apiClient.get('/analytics/top-selling-products', { params })
+    return response.data
+  },
+
+  // 4. Thống kê trạng thái đơn hàng (Hiện tại)
+  getOrdersByStatus: async () => {
+    const response = await apiClient.get('/analytics/orders-by-status')
+    return response.data
+  },
+
+  // 5. Doanh thu theo danh mục (Có lọc theo ngày)
+  getRevenueByCategory: async (startDate, endDate) => {
+    const params = {}
+    if (startDate) params.startDate = startDate.toISOString()
+    if (endDate) params.endDate = endDate.toISOString()
+
+    const response = await apiClient.get('/analytics/revenue-by-category', { params })
+    return response.data
+  },
+
+  // 6. Doanh thu theo thời gian (Biểu đồ)
+  getRevenueByTime: async (startDate, endDate, groupBy = 'day') => {
+    const params = { groupBy }
+    if (startDate) params.startDate = startDate.toISOString()
+    if (endDate) params.endDate = endDate.toISOString()
+
+    const response = await apiClient.get('/analytics/revenue-by-time', { params })
+    return response.data
+  },
+
+  // 7. Xuất báo cáo Excel
+  exportReport: async (reportType, startDate, endDate) => {
+    try {
+      const response = await apiClient.get('/analytics/export-report', {
+        params: { 
+          reportType,
+          startDate: startDate?.toISOString(),
+          endDate: endDate?.toISOString()
+        },
+        responseType: 'blob' // Quan trọng: nhận file binary
+      })
+      return response.data
+    } catch (error) {
+      console.error('Error exporting report:', error)
+      throw error
+    }
+  },
+
+  // =================================================================
+  // QUẢN LÝ SẢN PHẨM (PRODUCT)
+  // =================================================================
   getAllProducts: async (page = 0, size = 20) => {
     const response = await apiClient.get('/products', {
       params: { page, size }
@@ -78,7 +141,9 @@ export const adminService = {
     return response.data
   },
 
-  // --- Orders (Đơn hàng) ---
+  // =================================================================
+  // QUẢN LÝ ĐƠN HÀNG (ORDER)
+  // =================================================================
   getAllOrders: async (page = 0, size = 20) => {
     const response = await apiClient.get('/orders', {
       params: { page, size }
@@ -93,7 +158,9 @@ export const adminService = {
     return response.data
   },
 
-  // --- Users (Người dùng) ---
+  // =================================================================
+  // QUẢN LÝ NGƯỜI DÙNG (USER)
+  // =================================================================
   getAllUsers: async (page = 0, size = 20) => {
     const response = await apiClient.get('/users', {
       params: { page, size }
@@ -101,7 +168,9 @@ export const adminService = {
     return response.data
   },
 
-  // --- Categories (Danh mục) ---
+  // =================================================================
+  // QUẢN LÝ DANH MỤC (CATEGORY)
+  // =================================================================
   getCategories: async () => {
     try {
       const response = await apiClient.get('/categories')
@@ -136,22 +205,5 @@ export const adminService = {
   deleteCategory: async (id) => {
     const response = await apiClient.delete(`/categories/${id}`)
     return response.data
-  },
-  exportReport: async (reportType, startDate, endDate) => {
-    try {
-      const response = await apiClient.get('/analytics/export-report', {
-        params: { 
-          reportType,
-          startDate: startDate?.toISOString(),
-          endDate: endDate?.toISOString()
-        },
-        responseType: 'blob' // QUAN TRỌNG: Để nhận file binary
-      })
-      return response.data
-    } catch (error) {
-      console.error('Error exporting report:', error)
-      throw error
-    }
   }
-
 }
