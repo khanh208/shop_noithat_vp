@@ -1,6 +1,6 @@
 package com.tmdt.shop_noithat_vp.model;
 
-import com.fasterxml.jackson.annotation.JsonIgnore; // <-- THÊM IMPORT
+import com.fasterxml.jackson.annotation.JsonIgnore;
 import com.tmdt.shop_noithat_vp.model.enums.Role;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -62,10 +62,12 @@ public class User extends BaseEntity {
     @Column(name = "avatar_url")
     private String avatarUrl;
     
-    @Column(name = "balance", precision = 19, scale = 2)
+    // --- ĐÃ SỬA ĐOẠN NÀY ---
+    // Thêm columnDefinition để DB tự gán số 0, tránh bị NULL
+    @Column(name = "balance", precision = 19, scale = 2, columnDefinition = "NUMERIC(19, 2) default 0")
     private BigDecimal balance = BigDecimal.ZERO;
-    // === THÊM @JsonIgnore VÀO CÁC DANH SÁCH DƯỚI ĐÂY ===
-    
+    // -----------------------
+
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Address> addresses = new HashSet<>();
@@ -81,4 +83,14 @@ public class User extends BaseEntity {
     @JsonIgnore
     @OneToMany(mappedBy = "user", cascade = CascadeType.ALL, fetch = FetchType.LAZY)
     private Set<Wishlist> wishlists = new HashSet<>();
+
+    // === THÊM THỦ CÔNG GETTER/SETTER CHO BALANCE ĐỂ CHẮC CHẮN JSON NHẬN DIỆN ===
+    public BigDecimal getBalance() {
+        return balance != null ? balance : BigDecimal.ZERO;
+    }
+
+    public void setBalance(BigDecimal balance) {
+        this.balance = balance;
+    }
+    // =========================================================================
 }
