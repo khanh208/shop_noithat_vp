@@ -30,7 +30,7 @@ public class MoMoService {
     @Value("${momo.secret-key}")
     private String secretKey;
 
-    @Value("${momo.endpoint}")
+    @Value("${momo.apiEndpoint}")
     private String momoEndpoint;
 
     @Value("${momo.redirect-url}")
