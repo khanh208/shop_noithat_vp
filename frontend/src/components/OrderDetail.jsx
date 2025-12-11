@@ -161,7 +161,7 @@ const OrderDetail = () => {
             onClick={() => {
               const reason = prompt("Nhập lý do hủy đơn hàng:")
               if (reason && reason.trim()) {
-                orderService.requestCancel(order.id, reason)
+                orderService.requestCancel(order.id, reason) // Cần đảm bảo orderService có hàm này
                   .then(() => {
                     alert("Đã gửi yêu cầu hủy!")
                     loadOrder() // Reload lại đơn hàng

@@ -9,7 +9,7 @@ const apiClient = axios.create({
   }
 })
 
-// Thêm interceptor để tự động thêm token vào header
+// Interceptor 1: Tự động chèn Token vào header
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -23,8 +23,23 @@ apiClient.interceptors.request.use(
   }
 )
 
+// Interceptor 2: Tự động xử lý lỗi 401 (Hết hạn token)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.error('Unauthorized. Please login again.')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 export const orderService = {
   createOrder: async (orderData) => {
+    // Truyền params đúng cách
     const response = await apiClient.post('/create', null, {
       params: orderData
     })
@@ -43,7 +58,3 @@ export const orderService = {
     return response.data
   }
 }
-
-
-
-

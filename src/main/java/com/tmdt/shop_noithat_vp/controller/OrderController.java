@@ -58,5 +58,14 @@ public class OrderController {
         Order order = orderService.getOrderByCode(orderCode);
         return ResponseEntity.ok(order);
     }
+    @PostMapping("/{orderId}/request-cancel")
+    public ResponseEntity<Order> requestCancelOrder(
+            @PathVariable Long orderId,
+            @RequestParam String reason,
+            Authentication authentication) {
+        // Có thể thêm kiểm tra quyền sở hữu đơn hàng tại đây nếu cần
+        Order order = orderService.requestCancel(orderId, reason);
+        return ResponseEntity.ok(order);
+    }
 }
 

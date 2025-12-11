@@ -9,7 +9,7 @@ const apiClient = axios.create({
   }
 })
 
-// Thêm interceptor để tự động thêm token vào header
+// Interceptor 1: Tự động chèn Token
 apiClient.interceptors.request.use(
   (config) => {
     const token = localStorage.getItem('token')
@@ -19,6 +19,20 @@ apiClient.interceptors.request.use(
     return config
   },
   (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Interceptor 2: Tự động xử lý lỗi 401
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      console.error('Unauthorized. Please login again.')
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
     return Promise.reject(error)
   }
 )
@@ -49,4 +63,3 @@ export const cartService = {
     return response.data
   }
 }
-

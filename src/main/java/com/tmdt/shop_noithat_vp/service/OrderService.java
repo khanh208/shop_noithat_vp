@@ -153,6 +153,7 @@ public class OrderService {
 
         if (order.getOrderStatus() == OrderStatus.PENDING || order.getOrderStatus() == OrderStatus.CONFIRMED) {
             order.setOrderStatus(OrderStatus.CANCEL_REQUESTED);
+            // Lưu lý do hủy vào field notes với định dạng chuẩn để Frontend parse
             String oldNote = order.getNotes() != null ? order.getNotes() : "";
             order.setNotes(oldNote + " | [Lý do hủy]: " + reason);
             return orderRepository.save(order);
@@ -162,8 +163,7 @@ public class OrderService {
     }
 
     /**
-     * ===== SỬA LỖI Ở ĐÂY =====
-     * Admin duyệt hủy đơn -> Hoàn tiền (nếu thanh toán qua VÍ hoặc MOMO) -> Hoàn tồn kho
+     * Admin duyệt hủy đơn -> Hoàn tiền (nếu đã thanh toán) -> Hoàn tồn kho
      */
     @Transactional
     public Order approveCancel(Long orderId) {
@@ -181,26 +181,22 @@ public class OrderService {
             productRepository.save(product);
         }
 
-        // 3. === SỬA LỖI: HOÀN TIỀN VỀ VÍ ===
-        // Chỉ hoàn tiền nếu đã thanh toán THÀNH CÔNG và thanh toán qua WALLET hoặc MOMO
+        // 3. === LOGIC MỚI: HOÀN TIỀN VỀ VÍ ===
+        // Chỉ hoàn tiền nếu trạng thái thanh toán là SUCCESS
         if (order.getPaymentStatus() == PaymentStatus.SUCCESS) {
-            // Kiểm tra phương thức thanh toán
-            PaymentMethod paymentMethod = order.getPaymentMethod();
+            // Kiểm tra phương thức thanh toán (WALLET hoặc MOMO đều hoàn về Ví)
+            PaymentMethod pm = order.getPaymentMethod();
             
-            if (paymentMethod == PaymentMethod.WALLET || paymentMethod == PaymentMethod.MOMO) {
-                // Hoàn tiền về ví user
+            if (pm == PaymentMethod.WALLET || pm == PaymentMethod.MOMO) {
+                // Gọi WalletService để cộng lại tiền vào ví user
                 walletService.refund(order.getUser(), order.getTotalAmount(), order.getOrderCode());
+                
+                // Cập nhật trạng thái thanh toán thành ĐÃ HOÀN TIỀN
                 order.setPaymentStatus(PaymentStatus.REFUNDED);
                 
                 System.out.println("✅ Đã hoàn " + order.getTotalAmount() + " VND vào ví user " + order.getUser().getUsername());
-            } else if (paymentMethod == PaymentMethod.COD) {
-                // COD không cần hoàn tiền về ví (vì chưa thu tiền)
-                order.setPaymentStatus(PaymentStatus.REFUNDED); // Đánh dấu là đã xử lý
-                System.out.println("ℹ️ Đơn COD - Không cần hoàn tiền về ví");
-            }
-        } else {
-            // Nếu chưa thanh toán (PENDING/FAILED) -> Chỉ hủy đơn, không hoàn tiền
-            System.out.println("ℹ️ Đơn hàng chưa thanh toán - Chỉ hủy đơn, không hoàn tiền");
+            } 
+            // Nếu là COD mà lỡ set SUCCESS thì có thể xử lý riêng, nhưng thường COD hủy là chưa thanh toán.
         }
 
         return orderRepository.save(order);
@@ -229,7 +225,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new RuntimeException("Order not found"));
         
-        // Nếu chuyển sang CANCELLED thủ công -> Gọi approveCancel
+        // Nếu chuyển sang CANCELLED thủ công -> Gọi approveCancel để xử lý hoàn tiền
         if (status == OrderStatus.CANCELLED) {
             return approveCancel(orderId); 
         }

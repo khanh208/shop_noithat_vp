@@ -5,6 +5,7 @@ import { cartService } from '../services/cartService'
 import { orderService } from '../services/orderService'
 import { userService } from '../services/userService'
 import { useAuth } from '../context/AuthContext'
+import walletService from '../services/walletService'
 import axios from 'axios'
 
 const Checkout = () => {
@@ -172,16 +173,13 @@ const Checkout = () => {
           navigate('/orders')
         }
       } else if (formData.paymentMethod === 'WALLET') {
-        // 3. Nếu chọn WALLET -> Gọi API thanh toán từ ví
-        try {
-          await axios.post(`http://localhost:8082/api/wallet/pay-order/${orderData.id}`)
-          alert('Thanh toán thành công từ ví cá nhân!')
-          navigate('/orders')
-        } catch (walletError) {
-          console.error('Lỗi thanh toán ví:', walletError)
-          alert('Lỗi khi thanh toán từ ví: ' + (walletError.response?.data?.message || walletError.message))
-          navigate('/orders')
-        }
+        // 3. Nếu chọn WALLET
+        // Backend đã tự động trừ tiền khi tạo đơn (createOrder), không cần gọi API thanh toán riêng nữa.
+        
+        // Chỉ cần thông báo thành công và chuyển hướng
+        alert('Thanh toán thành công từ ví cá nhân!')
+        navigate('/orders')
+        
       } else {
         // COD
         alert('Đặt hàng thành công! Vui lòng thanh toán khi nhận hàng.')
@@ -195,6 +193,7 @@ const Checkout = () => {
       setProcessing(false)
     }
   }
+// ...existing code...
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price) + ' đ'

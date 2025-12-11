@@ -1,25 +1,54 @@
 import axios from 'axios'
-import authHeader from './authHeader'
 
 const API_URL = 'http://localhost:8082/api/users/'
 
+const apiClient = axios.create({
+  baseURL: API_URL,
+  headers: {
+    'Content-Type': 'application/json'
+  }
+})
+
+// Interceptor: Tự động lấy token từ LocalStorage chèn vào Header
+apiClient.interceptors.request.use(
+  (config) => {
+    const token = localStorage.getItem('token')
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`
+    }
+    return config
+  },
+  (error) => {
+    return Promise.reject(error)
+  }
+)
+
+// Interceptor: Xử lý lỗi 401 (Hết hạn token)
+apiClient.interceptors.response.use(
+  (response) => response,
+  (error) => {
+    if (error.response && error.response.status === 401) {
+      // Nếu token hết hạn, tự động đăng xuất
+      localStorage.removeItem('token')
+      localStorage.removeItem('user')
+      window.location.href = '/login'
+    }
+    return Promise.reject(error)
+  }
+)
+
 const userService = {
   getProfile: async () => {
-    try {
-      const response = await axios.get(API_URL + 'profile', { headers: authHeader() })
-      return response.data
-    } catch (error) {
-      console.error("Error fetching profile:", error)
-      throw error
-    }
+    // Gọi API lấy thông tin user (bao gồm số dư ví)
+    const response = await apiClient.get('profile')
+    return response.data
   },
   
   updateProfile: async (userData) => {
-    const response = await axios.put(API_URL + 'profile', userData, { headers: authHeader() })
+    const response = await apiClient.put('profile', userData)
     return response.data
   }
 }
 
-// Xuất ra cả 2 kiểu để tránh lỗi import bên Wallet.jsx
 export { userService } 
 export default userService

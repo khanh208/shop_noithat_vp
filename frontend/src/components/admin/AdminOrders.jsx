@@ -1,4 +1,7 @@
-// ...existing code...
+import React, { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
+import Navigation from '../Navigation'
+import { adminService } from '../../services/adminService'
 
 const AdminOrders = () => {
   const [orders, setOrders] = useState([])
@@ -24,19 +27,10 @@ const AdminOrders = () => {
   }
 
   const handleUpdateStatus = async (orderId, newStatus) => {
-    const currentOrder = orders.find(o => o.id === orderId)
-    const currentStatus = currentOrder?.orderStatus
-
     let confirmMessage = `Bạn có chắc muốn cập nhật trạng thái đơn hàng thành "${newStatus}"?`
-
+    
     if (newStatus === 'CANCELLED') {
-      if (currentStatus === 'SHIPPING') {
-        confirmMessage = 'Bạn có chắc chắn muốn báo cáo GIAO HÀNG THẤT BẠI và hủy đơn hàng này không?'
-      } else {
-        confirmMessage = 'Bạn có chắc chắn muốn HỦY đơn hàng này không? Hành động này không thể hoàn tác.'
-      }
-    } else if (newStatus === 'DELIVERED') {
-      confirmMessage = 'Xác nhận đơn hàng đã GIAO THÀNH CÔNG và hoàn tất?'
+        confirmMessage = 'Bạn có chắc chắn muốn HỦY đơn hàng này không? \n(Nếu đơn đã thanh toán, tiền sẽ được hoàn về Ví khách hàng)'
     }
 
     if (window.confirm(confirmMessage)) {
@@ -45,24 +39,21 @@ const AdminOrders = () => {
         await loadOrders()
         alert('Cập nhật trạng thái thành công!')
       } catch (error) {
-        alert('Lỗi khi cập nhật trạng thái')
+        alert('Lỗi khi cập nhật trạng thái: ' + (error.response?.data?.message || error.message))
         console.error(error)
       }
     }
   }
 
-  const handleRequestCancel = async (orderId) => {
-    const reason = prompt("Nhập lý do hủy đơn hàng:")
-    if (reason && reason.trim()) {
-      try {
-        await adminService.requestCancelOrder(orderId, reason)
-        alert("Đã gửi yêu cầu hủy!")
-        await loadOrders()
-      } catch (error) {
-        alert("Lỗi khi gửi yêu cầu hủy")
-        console.error(error)
-      }
+  // Hàm tách lấy lý do hủy từ chuỗi notes
+  const getCancelReason = (note) => {
+    if (!note) return null;
+    const key = "[Lý do hủy]:";
+    const index = note.indexOf(key);
+    if (index !== -1) {
+      return note.substring(index + key.length).trim();
     }
+    return null; 
   }
 
   const formatPrice = (price) => {
@@ -76,7 +67,8 @@ const AdminOrders = () => {
       'PACKING': 'primary',
       'SHIPPING': 'primary',
       'DELIVERED': 'success',
-      'CANCELLED': 'danger'
+      'CANCELLED': 'danger',
+      'CANCEL_REQUESTED': 'warning' // Màu vàng cho yêu cầu hủy
     }
     return badges[status] || 'secondary'
   }
@@ -88,7 +80,8 @@ const AdminOrders = () => {
       'PACKING': 'Đang đóng gói',
       'SHIPPING': 'Đang giao hàng',
       'DELIVERED': 'Giao thành công',
-      'CANCELLED': 'Đã hủy/Thất bại'
+      'CANCELLED': 'Đã hủy',
+      'CANCEL_REQUESTED': 'Yêu cầu hủy'
     }
     return texts[status] || status
   }
@@ -117,172 +110,135 @@ const AdminOrders = () => {
         ) : (
           <>
             <div className="table-responsive">
-              <table className="table table-striped table-hover">
+              <table className="table table-striped table-hover align-middle">
                 <thead className="table-dark">
                   <tr>
                     <th>Mã đơn</th>
                     <th>Khách hàng</th>
                     <th>Ngày đặt</th>
-                    <th>Số lượng</th>
                     <th>Tổng tiền</th>
-                    <th>Trạng thái</th>
+                    <th style={{ minWidth: '200px' }}>Trạng thái</th>
                     <th>Thanh toán</th>
                     <th>Thao tác</th>
                   </tr>
                 </thead>
                 <tbody>
-                  {orders.map((order) => (
-                    <tr key={order.id}>
-                      <td>
-                        <strong>{order.orderCode}</strong>
-                      </td>
-                      <td>
-                        <div>
-                          <div>{order.customerName}</div>
-                          <small className="text-muted">{order.customerPhone}</small>
-                        </div>
-                      </td>
-                      <td>
-                        {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                      </td>
-                      <td>{order.orderItems?.length || 0}</td>
-                      <td>
-                        <strong className="text-primary">
-                          {formatPrice(order.totalAmount)}
-                        </strong>
-                      </td>
-                      <td>
-                        <span className={`badge bg-${getStatusBadge(order.orderStatus)}`}>
-                          {getStatusText(order.orderStatus)}
-                        </span>
-                      </td>
-                      <td>
-                        <span className={`badge bg-${order.paymentStatus === 'SUCCESS' ? 'success' : 'warning'}`}>
-                          {order.paymentStatus === 'SUCCESS' ? 'Đã thanh toán' : 'Chưa thanh toán'}
-                        </span>
-                      </td>
-                      <td>
-                        <div className="btn-group flex-wrap">
-                          {/* Trạng thái CHỜ XỬ LÝ */}
-                          {order.orderStatus === 'PENDING' && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-success"
-                                onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')}
-                                title="Xác nhận đơn hàng"
-                              >
-                                <i className="fas fa-check"></i>
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger ms-1"
-                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                title="Hủy đơn hàng"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
+                  {orders.map((order) => {
+                    const cancelReason = getCancelReason(order.notes);
+                    return (
+                      <tr key={order.id}>
+                        <td><strong>{order.orderCode}</strong></td>
+                        <td>
+                          <div>
+                            <div className="fw-bold">{order.customerName}</div>
+                            <small className="text-muted">{order.customerPhone}</small>
+                          </div>
+                        </td>
+                        <td>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
+                        <td>
+                          <strong className="text-primary">{formatPrice(order.totalAmount)}</strong>
+                        </td>
+                        
+                        {/* Cột Trạng thái */}
+                        <td>
+                          <div className="d-flex flex-column align-items-start">
+                            <span className={`badge bg-${getStatusBadge(order.orderStatus)} mb-1`}>
+                              {getStatusText(order.orderStatus)}
+                            </span>
+                            
+                            {/* Hiển thị lý do hủy nếu có */}
+                            {order.orderStatus === 'CANCEL_REQUESTED' && cancelReason && (
+                              <div className="mt-1 p-2 rounded border border-warning bg-warning bg-opacity-10 w-100">
+                                <small className="text-warning-emphasis fw-bold d-block">
+                                  <i className="fas fa-bullhorn me-1"></i>Lý do khách hủy:
+                                </small>
+                                <small className="text-muted fst-italic d-block text-wrap">
+                                  "{cancelReason}"
+                                </small>
+                              </div>
+                            )}
+                          </div>
+                        </td>
 
-                          {/* Trạng thái ĐÃ XÁC NHẬN */}
-                          {order.orderStatus === 'CONFIRMED' && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-primary"
-                                onClick={() => handleUpdateStatus(order.id, 'PACKING')}
-                                title="Chuyển sang đóng gói"
-                              >
-                                <i className="fas fa-box"></i>
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger ms-1"
-                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                title="Hủy đơn hàng"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
-
-                          {/* Trạng thái ĐANG ĐÓNG GÓI */}
-                          {order.orderStatus === 'PACKING' && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-info"
-                                onClick={() => handleUpdateStatus(order.id, 'SHIPPING')}
-                                title="Chuyển sang giao hàng"
-                              >
-                                <i className="fas fa-truck"></i>
-                              </button>
-                              <button
-                                className="btn btn-sm btn-danger ms-1"
-                                onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                title="Hủy đơn hàng"
-                              >
-                                <i className="fas fa-times"></i>
-                              </button>
-                            </>
-                          )}
-
-                          {/* Trạng thái ĐANG GIAO HÀNG */}
-                          {order.orderStatus === 'SHIPPING' && (
-                            <>
-                              <button
-                                className="btn btn-sm btn-success me-1"
-                                onClick={() => handleUpdateStatus(order.id, 'DELIVERED')}
-                                title="Giao thành công"
-                              >
-                                <i className="fas fa-check-circle"></i>
-                              </button>
+                        <td>
+                          <span className={`badge bg-${order.paymentStatus === 'SUCCESS' ? 'success' : 'warning'}`}>
+                            {order.paymentStatus === 'SUCCESS' ? 'Đã thanh toán' : 'Chưa thanh toán'}
+                          </span>
+                        </td>
+                        
+                        <td>
+                          <div className="btn-group">
+                            {/* Nút Duyệt Hủy cho trạng thái Yêu cầu hủy */}
+                            {order.orderStatus === 'CANCEL_REQUESTED' ? (
                               <button
                                 className="btn btn-sm btn-danger"
                                 onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                title="Giao thất bại / Hủy"
+                                title="Đồng ý hủy đơn"
                               >
-                                <i className="fas fa-times-circle"></i>
+                                <i className="fas fa-check me-1"></i>Duyệt Hủy
                               </button>
-                            </>
-                          )}
-                        </div>
+                            ) : (
+                              /* Các nút trạng thái khác */
+                              <>
+                                {order.orderStatus === 'PENDING' && (
+                                    <button className="btn btn-sm btn-success me-1" 
+                                            onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')} title="Xác nhận">
+                                        <i className="fas fa-check"></i>
+                                    </button>
+                                )}
+                                
+                                {order.orderStatus === 'CONFIRMED' && (
+                                    <button className="btn btn-sm btn-primary me-1" 
+                                            onClick={() => handleUpdateStatus(order.id, 'PACKING')} title="Đóng gói">
+                                        <i className="fas fa-box"></i>
+                                    </button>
+                                )}
 
-                        {/* Nút Yêu cầu hủy cho trạng thái PENDING & CONFIRMED */}
-                        {(order.orderStatus === 'PENDING' || order.orderStatus === 'CONFIRMED') && (
-                          <div className="mt-2">
-                            <button 
-                              className="btn btn-sm btn-outline-danger w-100"
-                              onClick={() => handleRequestCancel(order.id)}
-                              title="Gửi yêu cầu hủy đơn hàng"
-                            >
-                              <i className="fas fa-ban me-1"></i>
-                              Yêu cầu hủy
-                            </button>
+                                {order.orderStatus === 'PACKING' && (
+                                    <button className="btn btn-sm btn-info me-1" 
+                                            onClick={() => handleUpdateStatus(order.id, 'SHIPPING')} title="Giao hàng">
+                                        <i className="fas fa-truck"></i>
+                                    </button>
+                                )}
+
+                                {order.orderStatus === 'SHIPPING' && (
+                                    <button className="btn btn-sm btn-success me-1" 
+                                            onClick={() => handleUpdateStatus(order.id, 'DELIVERED')} title="Giao thành công">
+                                        <i className="fas fa-check-circle"></i>
+                                    </button>
+                                )}
+
+                                {(order.orderStatus !== 'DELIVERED' && order.orderStatus !== 'CANCELLED') && (
+                                    <button className="btn btn-sm btn-outline-danger" 
+                                            onClick={() => handleUpdateStatus(order.id, 'CANCELLED')} title="Hủy đơn">
+                                        <i className="fas fa-times"></i>
+                                    </button>
+                                )}
+                              </>
+                            )}
                           </div>
-                        )}
-                      </td>
-                    </tr>
-                  ))}
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
+            {/* Phân trang */}
             {totalPages > 1 && (
               <nav aria-label="Page navigation" className="mt-4">
                 <ul className="pagination justify-content-center">
                   <li className={`page-item ${page === 0 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(page - 1)} disabled={page === 0}>
-                      Trước
-                    </button>
+                    <button className="page-link" onClick={() => setPage(page - 1)} disabled={page === 0}>Trước</button>
                   </li>
                   {[...Array(totalPages)].map((_, i) => (
                     <li key={i} className={`page-item ${i === page ? 'active' : ''}`}>
-                      <button className="page-link" onClick={() => setPage(i)}>
-                        {i + 1}
-                      </button>
+                      <button className="page-link" onClick={() => setPage(i)}>{i + 1}</button>
                     </li>
                   ))}
                   <li className={`page-item ${page === totalPages - 1 ? 'disabled' : ''}`}>
-                    <button className="page-link" onClick={() => setPage(page + 1)} disabled={page === totalPages - 1}>
-                      Sau
-                    </button>
+                    <button className="page-link" onClick={() => setPage(page + 1)} disabled={page === totalPages - 1}>Sau</button>
                   </li>
                 </ul>
               </nav>
@@ -295,4 +251,3 @@ const AdminOrders = () => {
 }
 
 export default AdminOrders
-// ...existing code...
