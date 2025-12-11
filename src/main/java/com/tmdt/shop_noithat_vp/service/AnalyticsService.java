@@ -2,7 +2,6 @@ package com.tmdt.shop_noithat_vp.service;
 
 import com.tmdt.shop_noithat_vp.model.Category;
 import com.tmdt.shop_noithat_vp.model.Order;
-import com.tmdt.shop_noithat_vp.model.OrderItem;
 import com.tmdt.shop_noithat_vp.model.Product;
 import com.tmdt.shop_noithat_vp.model.User;
 import com.tmdt.shop_noithat_vp.model.enums.OrderStatus;
@@ -40,9 +39,10 @@ public class AnalyticsService {
     @Autowired
     private CategoryRepository categoryRepository;
     
-    // ========== TỔNG QUAN ==========
+    // ========== TỔNG QUAN (CARD) ==========
     
     public BigDecimal getTotalRevenue() {
+        // Chỉ tính đơn DELIVERED
         return orderRepository.sumTotalAmountByOrderStatusAndIsDeletedFalse(OrderStatus.DELIVERED)
                 .orElse(BigDecimal.ZERO);
     }
@@ -51,6 +51,7 @@ public class AnalyticsService {
         LocalDateTime startOfMonth = YearMonth.now().atDay(1).atStartOfDay();
         LocalDateTime endOfMonth = YearMonth.now().atEndOfMonth().atTime(23, 59, 59);
         
+        // Sử dụng query mới đã filter DELIVERED
         List<Order> orders = orderRepository.findDeliveredOrdersBetween(startOfMonth, endOfMonth);
         return orders.stream()
                 .map(Order::getTotalAmount)
@@ -87,13 +88,14 @@ public class AnalyticsService {
         return productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10).size();
     }
     
-    // ========== DOANH THU THEO THỜI GIAN ==========
+    // ========== BIỂU ĐỒ DOANH THU ==========
     
     public Map<String, Object> getRevenueByTime(LocalDateTime startDate, LocalDateTime endDate, String groupBy) {
-        // Xử lý null date
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+        // Xử lý Null Date để tránh lỗi PostgreSQL
+        LocalDateTime start = (startDate != null) ? startDate : LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime end = (endDate != null) ? endDate : LocalDateTime.now();
 
+        // Query chỉ lấy đơn DELIVERED
         List<Order> orders = orderRepository.findDeliveredOrdersBetween(start, end);
         
         Map<String, BigDecimal> revenueMap = new TreeMap<>();
@@ -125,10 +127,11 @@ public class AnalyticsService {
     // ========== TOP SẢN PHẨM BÁN CHẠY ==========
     
     public List<Map<String, Object>> getTopSellingProducts(int limit, LocalDateTime startDate, LocalDateTime endDate) {
-        // Xử lý null date
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+        // Xử lý Null Date
+        LocalDateTime start = (startDate != null) ? startDate : LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime end = (endDate != null) ? endDate : LocalDateTime.now();
 
+        // Query trực tiếp DB, chỉ tính đơn DELIVERED
         List<Object[]> results = orderRepository.findTopSellingProducts(start, end, PageRequest.of(0, limit));
         
         List<Map<String, Object>> response = new ArrayList<>();
@@ -148,19 +151,14 @@ public class AnalyticsService {
         return response;
     }
     
-    // ========== THỐNG KÊ TRẠNG THÁI ==========
-    
-    public long getOrderCountByStatus(OrderStatus status) {
-        return orderRepository.countByOrderStatusAndIsDeletedFalse(status);
-    }
-    
     // ========== DOANH THU THEO DANH MỤC ==========
     
     public List<Map<String, Object>> getRevenueByCategory(LocalDateTime startDate, LocalDateTime endDate) {
-        // Xử lý null date
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
+        // Xử lý Null Date
+        LocalDateTime start = (startDate != null) ? startDate : LocalDateTime.of(2000, 1, 1, 0, 0);
+        LocalDateTime end = (endDate != null) ? endDate : LocalDateTime.now();
 
+        // Query trực tiếp DB, chỉ tính đơn DELIVERED
         List<Object[]> results = orderRepository.findRevenueByCategory(start, end);
         
         List<Map<String, Object>> response = new ArrayList<>();
@@ -179,9 +177,14 @@ public class AnalyticsService {
         return response;
     }
     
-    // ========== TOP KHÁCH HÀNG ==========
+    // ========== CÁC HÀM KHÁC (Giữ nguyên) ==========
+
+    public long getOrderCountByStatus(OrderStatus status) {
+        return orderRepository.countByOrderStatusAndIsDeletedFalse(status);
+    }
     
     public List<Map<String, Object>> getTopCustomers(int limit) {
+        // Chỉ lấy khách hàng từ các đơn DELIVERED
         List<Order> orders = orderRepository.findByOrderStatusAndIsDeletedFalse(OrderStatus.DELIVERED, org.springframework.data.domain.Pageable.unpaged()).getContent();
         
         Map<User, BigDecimal> customerSpendingMap = new HashMap<>();
@@ -209,14 +212,14 @@ public class AnalyticsService {
                 })
                 .collect(Collectors.toList());
     }
-    
-    // ========== TỶ LỆ CHUYỂN ĐỔI ==========
-    
-    public Map<String, Object> getConversionRate(LocalDateTime startDate, LocalDateTime endDate) {
-        LocalDateTime start = startDate != null ? startDate : LocalDateTime.of(1970, 1, 1, 0, 0);
-        LocalDateTime end = endDate != null ? endDate : LocalDateTime.now();
 
-        List<Order> allOrders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(start, end);
+    public Map<String, Object> getConversionRate(LocalDateTime startDate, LocalDateTime endDate) {
+        // Tỷ lệ chuyển đổi vẫn cần đếm cả đơn hủy/pending để so sánh
+        List<Order> allOrders = orderRepository.findByCreatedAtBetweenAndIsDeletedFalse(
+            startDate != null ? startDate : LocalDateTime.of(2000, 1, 1, 0, 0), 
+            endDate != null ? endDate : LocalDateTime.now()
+        );
+        
         long total = allOrders.size();
         long completed = allOrders.stream().filter(o -> o.getOrderStatus() == OrderStatus.DELIVERED).count();
         long cancelled = allOrders.stream().filter(o -> o.getOrderStatus() == OrderStatus.CANCELLED).count();
@@ -230,23 +233,18 @@ public class AnalyticsService {
         return res;
     }
     
-    // ========== SẢN PHẨM TỒN KHO THẤP ==========
-
     public List<Map<String, Object>> getLowStockProducts() {
         return productRepository.findByStockQuantityLessThanEqualAndIsDeletedFalse(10).stream().map(p -> {
             Map<String, Object> m = new HashMap<>();
             m.put("productId", p.getId());
             m.put("productName", p.getName());
-            m.put("sku", p.getSku());
             m.put("stockQuantity", p.getStockQuantity());
-            m.put("minStockLevel", p.getMinStockLevel());
-            m.put("category", p.getCategory().getName());
             return m;
         }).collect(Collectors.toList());
     }
-    
-    // ========== EXPORT REPORT (EXCEL) ==========
-    
+
+    // ========== EXPORT EXCEL ==========
+
     public byte[] exportReport(String reportType, LocalDateTime startDate, LocalDateTime endDate) {
         try (Workbook workbook = new XSSFWorkbook(); 
              ByteArrayOutputStream out = new ByteArrayOutputStream()) {
