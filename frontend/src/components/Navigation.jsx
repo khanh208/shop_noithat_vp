@@ -12,14 +12,18 @@ const Navigation = () => {
   useEffect(() => {
     if (isAuthenticated) {
       loadCartCount()
+    } else {
+      setCartCount(0) // Reset giỏ hàng nếu chưa đăng nhập
     }
   }, [isAuthenticated, location])
 
   const loadCartCount = async () => {
     try {
-      const cartItems = await cartService.getCart()
-      const count = cartItems.reduce((sum, item) => sum + item.quantity, 0)
-      setCartCount(count)
+      const items = await cartService.getCart()
+      if (Array.isArray(items)) {
+        const count = items.reduce((sum, item) => sum + item.quantity, 0)
+        setCartCount(count)
+      }
     } catch (error) {
       console.error('Error loading cart:', error)
     }
@@ -30,39 +34,35 @@ const Navigation = () => {
     navigate('/login')
   }
 
-  if (!isAuthenticated) return null
+  // ĐÃ BỎ: if (!isAuthenticated) return null -> Để hiển thị Nav cho cả khách
 
   return (
-    <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
+    <nav className="navbar navbar-expand-lg navbar-dark bg-dark sticky-top shadow-sm">
       <div className="container">
-        <Link className="navbar-brand d-flex align-items-center" to="/home">
-        {/* Hiển thị Logo */}
-        <img 
-          src="/images/logo.png" 
-          alt="Logo" 
-          height="40" 
-          className="me-2" 
-          style={{ objectFit: 'contain' }}
-          onError={(e) => {
-            // Fallback nếu ảnh lỗi: hiện lại icon cũ
-            e.target.style.display = 'none'; 
-            e.target.nextSibling.style.display = 'inline-block';
-          }}
-        />
+        <Link className="navbar-brand d-flex align-items-center" to="/">
+          <img 
+            src="/images/logo.png" 
+            alt="Logo" 
+            height="40" 
+            className="me-2" 
+            style={{ objectFit: 'contain' }}
+            onError={(e) => {
+              e.target.style.display = 'none'; 
+              e.target.nextSibling.style.display = 'inline-block';
+            }}
+          />
+          <span className="fw-bold">Shop Nội Thất VP</span>
+          <i className="fas fa-store me-2" style={{display: 'none'}}></i>
+        </Link>
         
-        {/* (Tùy chọn) Giữ lại tên shop hoặc xóa đi nếu logo đã có tên */}
-        <span className="fw-bold">Shop Nội Thất VP</span>
-        
-        {/* Icon backup (ẩn mặc định, chỉ hiện khi ảnh lỗi nhờ hàm onError trên) */}
-        <i className="fas fa-store me-2" style={{display: 'none'}}></i>
-      </Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span className="navbar-toggler-icon"></span>
         </button>
+        
         <div className="collapse navbar-collapse" id="navbarNav">
           <ul className="navbar-nav me-auto">
             <li className="nav-item">
-              <Link className={`nav-link ${location.pathname === '/home' ? 'active' : ''}`} to="/home">
+              <Link className={`nav-link ${location.pathname === '/' || location.pathname === '/home' ? 'active' : ''}`} to="/">
                 <i className="fas fa-home me-1"></i> Trang chủ
               </Link>
             </li>
@@ -71,59 +71,85 @@ const Navigation = () => {
                 <i className="fas fa-box me-1"></i> Sản phẩm
               </Link>
             </li>
+             <li className="nav-item">
+              <Link className={`nav-link ${location.pathname === '/discounted' ? 'active' : ''}`} to="/discounted">
+                <i className="fas fa-tags me-1"></i> Khuyến mãi
+              </Link>
+            </li>
             <li className="nav-item">
               <Link className={`nav-link ${location.pathname === '/cart' ? 'active' : ''}`} to="/cart">
                 <i className="fas fa-shopping-cart me-1"></i> Giỏ hàng
-                {cartCount > 0 && <span className="badge bg-danger ms-1">{cartCount}</span>}
+                {/* Chỉ hiện số lượng khi đã đăng nhập */}
+                {isAuthenticated && cartCount > 0 && <span className="badge bg-danger ms-1">{cartCount}</span>}
               </Link>
             </li>
-            <li className="nav-item">
-              <Link className={`nav-link ${location.pathname === '/orders' ? 'active' : ''}`} to="/orders">
-                <i className="fas fa-shopping-bag me-1"></i> Đơn hàng
-              </Link>
-            </li>
+            {/* Ẩn link Đơn hàng nếu chưa đăng nhập để đỡ rối, hoặc để lại tùy ý */}
+            {isAuthenticated && (
+              <li className="nav-item">
+                <Link className={`nav-link ${location.pathname === '/orders' ? 'active' : ''}`} to="/orders">
+                  <i className="fas fa-shopping-bag me-1"></i> Đơn hàng
+                </Link>
+              </li>
+            )}
           </ul>
-          <ul className="navbar-nav">
-            <li className="nav-item dropdown">
-              <a className="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
-                <i className="fas fa-user me-2"></i>
-                {user?.username}
-                {user?.role === 'ADMIN' && <span className="badge bg-danger ms-2">ADMIN</span>}
-              </a>
-              <ul className="dropdown-menu dropdown-menu-end">
-                <li>
-                  <Link className="dropdown-item" to="/profile">
-                    <i className="fas fa-user-circle me-2"></i>Tài khoản
+          
+          <ul className="navbar-nav align-items-center">
+            {isAuthenticated ? (
+              <li className="nav-item dropdown">
+                <a className="nav-link dropdown-toggle text-white" href="#" role="button" data-bs-toggle="dropdown">
+                  <i className="fas fa-user me-2"></i>
+                  {user?.username}
+                  {user?.role === 'ADMIN' && <span className="badge bg-danger ms-2">ADMIN</span>}
+                </a>
+                <ul className="dropdown-menu dropdown-menu-end">
+                  <li>
+                    <Link className="dropdown-item" to="/profile">
+                      <i className="fas fa-user-circle me-2"></i>Tài khoản
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="dropdown-item" to="/wallet">
+                      <i className="fas fa-wallet me-2"></i>Ví của tôi
+                    </Link>
+                  </li>
+                  <li>
+                    <Link className="dropdown-item" to="/orders">
+                      <i className="fas fa-shopping-bag me-2"></i>Đơn hàng
+                    </Link>
+                  </li>
+                  {(user?.role === 'ADMIN' || user?.role === 'SALES' || user?.role === 'WAREHOUSE' || user?.role === 'MARKETING') && (
+                    <>
+                      <li><hr className="dropdown-divider" /></li>
+                      <li>
+                        <Link className="dropdown-item text-danger" to="/admin">
+                          <i className="fas fa-cog me-2"></i>Trang quản trị
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                  <li><hr className="dropdown-divider" /></li>
+                  <li>
+                    <button className="dropdown-item" onClick={handleLogout}>
+                      <i className="fas fa-sign-out-alt me-2"></i>Đăng xuất
+                    </button>
+                  </li>
+                </ul>
+              </li>
+            ) : (
+              /* Hiển thị khi chưa đăng nhập */
+              <>
+                <li className="nav-item">
+                  <Link className="nav-link text-white me-2" to="/login">
+                    <i className="fas fa-sign-in-alt me-1"></i> Đăng nhập
                   </Link>
                 </li>
-                <li>
-              <Link className="dropdown-item" to="/wallet">
-                <i className="fas fa-wallet me-2"></i>Ví của tôi
-              </Link>
-            </li>
-                <li>
-                  <Link className="dropdown-item" to="/orders">
-                    <i className="fas fa-shopping-bag me-2"></i>Đơn hàng
+                <li className="nav-item">
+                  <Link className="btn btn-primary btn-sm rounded-pill px-3" to="/register">
+                    Đăng ký
                   </Link>
                 </li>
-                {(user?.role === 'ADMIN' || user?.role === 'SALES' || user?.role === 'WAREHOUSE' || user?.role === 'MARKETING') && (
-                  <>
-                    <li><hr className="dropdown-divider" /></li>
-                    <li>
-                      <Link className="dropdown-item text-danger" to="/admin">
-                        <i className="fas fa-cog me-2"></i>Trang quản trị
-                      </Link>
-                    </li>
-                  </>
-                )}
-                <li><hr className="dropdown-divider" /></li>
-                <li>
-                  <button className="dropdown-item" onClick={handleLogout}>
-                    <i className="fas fa-sign-out-alt me-2"></i>Đăng xuất
-                  </button>
-                </li>
-              </ul>
-            </li>
+              </>
+            )}
           </ul>
         </div>
       </div>
@@ -132,4 +158,3 @@ const Navigation = () => {
 }
 
 export default Navigation
-

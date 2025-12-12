@@ -120,7 +120,7 @@ const Home = () => {
             <div className="carousel-caption d-none d-md-block pb-5">
               <h1 className="display-3 fw-bold">Khuyến Mãi Mùa Hè</h1>
               <p className="lead fs-4">Giảm giá lên đến 50% cho các sản phẩm bàn làm việc.</p>
-              <Link to="/products/discounted" className="btn btn-warning btn-lg mt-3 px-5 py-3 rounded-pill shadow fw-bold text-dark">
+              <Link to="/discounted" className="btn btn-warning btn-lg mt-3 px-5 py-3 rounded-pill shadow fw-bold text-dark">
                 Săn Deal Hot
               </Link>
             </div>

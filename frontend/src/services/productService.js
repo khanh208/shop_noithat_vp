@@ -62,9 +62,15 @@ export const productService = {
     return response.data
   },
 
-  searchProducts: async (filters = {}, page = 0, size = 12) => {
+  searchProducts: async (filters = {}, page = 0, size = 12, sortBy = 'createdAt', sortDir = 'DESC') => {
     const response = await apiClient.get('/search', {
-      params: { ...filters, page, size }
+      params: { 
+        ...filters, 
+        page, 
+        size,
+        sortBy, 
+        sortDir   
+      }
     })
     return response.data
   }

@@ -17,41 +17,72 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    // Kiểm tra token trong localStorage khi component mount
-    const storedToken = localStorage.getItem('token')
-    if (storedToken) {
-      setToken(storedToken)
-      // Có thể decode token để lấy thông tin user
-      try {
-        const payload = JSON.parse(atob(storedToken.split('.')[1]))
-        setUser({
-          username: payload.sub,
-          role: payload.role
-        })
-      } catch (e) {
-        console.error('Error decoding token:', e)
-        localStorage.removeItem('token')
+    const initAuth = async () => {
+      const storedToken = localStorage.getItem('token')
+      const storedUser = localStorage.getItem('user')
+
+      if (storedToken) {
+        setToken(storedToken)
+        
+        // SỬA LỖI: Ưu tiên lấy User từ localStorage trước (vì có chứa ID)
+        if (storedUser) {
+          try {
+            const parsedUser = JSON.parse(storedUser)
+            setUser(parsedUser)
+          } catch (e) {
+            console.error("Lỗi parse user từ localStorage", e)
+            // Nếu lỗi parse, fallback về decode token (dù thiếu ID nhưng vẫn đỡ hơn null)
+            decodeToken(storedToken)
+          }
+        } else {
+          // Nếu không có storedUser, mới decode token
+          decodeToken(storedToken)
+        }
       }
+      setLoading(false)
     }
-    setLoading(false)
+
+    initAuth()
   }, [])
+
+  // Hàm phụ trợ để decode token
+  const decodeToken = (tokenStr) => {
+    try {
+      const payload = JSON.parse(atob(tokenStr.split('.')[1]))
+      setUser({
+        username: payload.sub,
+        role: payload.role
+        // Lưu ý: Token hiện tại không có ID, nên nếu vào case này ID vẫn sẽ thiếu.
+        // Nhưng logic chính đã được fix bằng cách lấy từ localStorage ở trên.
+      })
+    } catch (e) {
+      console.error('Error decoding token:', e)
+      localStorage.removeItem('token')
+    }
+  }
 
   const login = async (usernameOrEmail, password) => {
     try {
       const response = await authService.login(usernameOrEmail, password)
-      setToken(response.token)
-      setUser({
+      
+      const userData = {
         id: response.id,
         username: response.username,
         email: response.email,
         role: response.role
-      })
+      }
+
+      setToken(response.token)
+      setUser(userData)
+      
+      // Lưu vào localStorage để persistence
       localStorage.setItem('token', response.token)
+      localStorage.setItem('user', JSON.stringify(userData))
+      
       return { success: true }
     } catch (error) {
       return { 
         success: false, 
-        // Dùng optional chaining (?.) để tránh crash
         message: error.response?.data?.message || error.message || 'Đăng nhập thất bại' 
       }
     }
@@ -60,14 +91,20 @@ export const AuthProvider = ({ children }) => {
   const register = async (userData) => {
     try {
       const response = await authService.register(userData)
-      setToken(response.token)
-      setUser({
+      
+      const userInfo = {
         id: response.id,
         username: response.username,
         email: response.email,
         role: response.role
-      })
+      }
+
+      setToken(response.token)
+      setUser(userInfo)
+      
       localStorage.setItem('token', response.token)
+      localStorage.setItem('user', JSON.stringify(userInfo))
+      
       return { success: true }
     } catch (error) {
       return { 
@@ -81,6 +118,7 @@ export const AuthProvider = ({ children }) => {
     setToken(null)
     setUser(null)
     localStorage.removeItem('token')
+    localStorage.removeItem('user')
   }
 
   const value = {
@@ -95,7 +133,3 @@ export const AuthProvider = ({ children }) => {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-
-
-
-

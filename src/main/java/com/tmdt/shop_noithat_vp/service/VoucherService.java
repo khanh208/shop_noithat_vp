@@ -8,6 +8,7 @@ import org.springframework.stereotype.Service;
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 
@@ -17,6 +18,11 @@ public class VoucherService {
     @Autowired
     private VoucherRepository voucherRepository;
 
+    public List<Voucher> getValidVouchers() {
+        LocalDateTime now = LocalDateTime.now();
+        // Tìm voucher đang active, chưa xóa, và thời gian hiện tại nằm trong khoảng start-end
+        return voucherRepository.findByIsActiveTrueAndStartDateBeforeAndEndDateAfterAndIsDeletedFalse(now, now);
+    }
     public Map<String, Object> applyVoucher(String code, BigDecimal orderTotal) {
         Optional<Voucher> voucherOpt = voucherRepository.findByCode(code);
         

@@ -8,6 +8,7 @@ import VerifyEmail from './components/VerifyEmail'
 import Home from './components/Home'
 import Products from './components/Products'
 import ProductDetail from './components/ProductDetail'
+import DiscountedProducts from './components/DiscountedProducts'
 import Cart from './components/Cart'
 import Orders from './components/Orders'
 import OrderDetail from './components/OrderDetail'
@@ -35,27 +36,28 @@ function App() {
     <AuthProvider>
       <Router>
         <Routes>
-          {/* === PUBLIC ROUTES === */}
+          {/* === PUBLIC ROUTES (Ai cũng có thể truy cập) === */}
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
           <Route path="/forgot-password" element={<ForgotPassword />} />
           <Route path="/reset-password" element={<ResetPassword />} />
           <Route path="/verify-email" element={<VerifyEmail />} />
+          
+          {/* Các trang xem sản phẩm -> Public */}
+          <Route path="/" element={<Home />} />
+          <Route path="/home" element={<Home />} />
+          <Route path="/products" element={<Products />} />
+          <Route path="/products/:slug" element={<ProductDetail />} />
+          <Route path="/discounted" element={<DiscountedProducts />} />
 
-          {/* === PROTECTED ROUTES (Customer) === */}
-          <Route path="/home" element={<ProtectedRoute><Home /></ProtectedRoute>} />
-          <Route path="/products" element={<ProtectedRoute><Products /></ProtectedRoute>} />
-          <Route path="/products/:slug" element={<ProtectedRoute><ProductDetail /></ProtectedRoute>} />
+          {/* === PROTECTED ROUTES (Phải đăng nhập mới vào được) === */}
           <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
           <Route path="/checkout" element={<ProtectedRoute><Checkout /></ProtectedRoute>} />
           <Route path="/orders" element={<ProtectedRoute><Orders /></ProtectedRoute>} />
           <Route path="/orders/:orderCode" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
-          <Route path="/payment-result" element={<PaymentResult />} />
-          <Route path="/admin/orders/:orderCode" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
-          <Route path="/admin/vouchers" element={<AdminRoute><AdminVouchers /></AdminRoute>} />
-          <Route path="/admin/vouchers/new" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
-          <Route path="/admin/vouchers/:id/edit" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
+          <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
+          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />      
 
           {/* === ADMIN ROUTES === */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -63,15 +65,20 @@ function App() {
           <Route path="/admin/products/new" element={<AdminRoute><AdminProductForm /></AdminRoute>} />
           <Route path="/admin/products/:id/edit" element={<AdminRoute><AdminProductForm /></AdminRoute>} />
           <Route path="/admin/orders" element={<AdminRoute><AdminOrders /></AdminRoute>} />
+          <Route path="/admin/orders/:orderCode" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
           <Route path="/admin/categories" element={<AdminRoute><AdminCategories /></AdminRoute>} />
           <Route path="/admin/categories/new" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
           <Route path="/admin/categories/:id/edit" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
           <Route path="/admin/banners" element={<AdminRoute><AdminBanners /></AdminRoute>} />
           <Route path="/admin/banners/new" element={<AdminRoute><AdminBannerForm /></AdminRoute>} />
           <Route path="/admin/banners/:id/edit" element={<AdminRoute><AdminBannerForm /></AdminRoute>} />
-          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />      
+          <Route path="/admin/vouchers" element={<AdminRoute><AdminVouchers /></AdminRoute>} />
+          <Route path="/admin/vouchers/new" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
+          <Route path="/admin/vouchers/:id/edit" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
+
           {/* === DEFAULT REDIRECT === */}
-          <Route path="/" element={<Navigate to="/login" replace />} />
+          {/* Nếu đường dẫn sai, chuyển về trang chủ thay vì login */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </Router>
     </AuthProvider>

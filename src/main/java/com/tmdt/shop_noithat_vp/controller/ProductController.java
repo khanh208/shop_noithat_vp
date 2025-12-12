@@ -55,7 +55,8 @@ public class ProductController {
         return ResponseEntity.ok(productService.getDiscountedProducts(pageable));
     }
     
-    @GetMapping("/search")
+    
+   @GetMapping("/search")
     public ResponseEntity<Page<Product>> searchProducts(
             @RequestParam(required = false) Long categoryId,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -64,8 +65,8 @@ public class ProductController {
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "12") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDir) {
+            @RequestParam(defaultValue = "createdAt") String sortBy, // Nhận tham số sắp xếp
+            @RequestParam(defaultValue = "DESC") String sortDir) {   // Nhận chiều sắp xếp
         
         // Tạo đối tượng Sort
         Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
@@ -75,19 +76,20 @@ public class ProductController {
         return ResponseEntity.ok(products);
     }
     
-    // ... (Giữ nguyên các API getById, getSlug...)
     @GetMapping("/{id:[0-9]+}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Optional<Product> product = productService.getProductById(id);
-        return product.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return product.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
-
+    
     @GetMapping("/slug/{slug}")
     public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
         Optional<Product> product = productService.getProductBySlug(slug);
         if (product.isPresent()) {
             productService.incrementViewCount(product.get().getId());
         }
-        return product.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
+        return product.map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
     }
 }

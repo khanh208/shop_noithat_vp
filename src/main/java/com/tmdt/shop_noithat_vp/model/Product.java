@@ -40,6 +40,7 @@ public class Product extends BaseEntity {
     
     // === THÊM ĐOẠN NÀY ĐỂ FIX LỖI SẮP XẾP ===
     // Tạo cột ảo để tính giá thực tế: Nếu sale_price không null thì lấy sale_price, ngược lại lấy price
+    // Cú pháp SQL bên dưới dành cho PostgreSQL (COALESCE)
     @Formula("COALESCE(sale_price, price)")
     private BigDecimal currentPrice;
     // ========================================

@@ -9,7 +9,6 @@ const apiClient = axios.create({
   }
 })
 
-// Thêm token nếu cần (tuỳ voucher có yêu cầu đăng nhập không, thường là có)
 apiClient.interceptors.request.use((config) => {
   const token = localStorage.getItem('token')
   if (token) config.headers.Authorization = `Bearer ${token}`
@@ -18,10 +17,15 @@ apiClient.interceptors.request.use((config) => {
 
 export const voucherService = {
   checkVoucher: async (code, total) => {
-    // Gọi API: GET /api/vouchers/check?code=XYZ&total=100000
     const response = await apiClient.get(`/check`, {
       params: { code, total }
     })
+    return response.data
+  },
+  
+  // === THÊM HÀM NÀY ===
+  getActiveVouchers: async () => {
+    const response = await apiClient.get('/active')
     return response.data
   }
 }
