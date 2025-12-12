@@ -67,6 +67,7 @@ public class ProductController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDir) {
         
+        // Tạo đối tượng Sort
         Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
         
@@ -74,21 +75,19 @@ public class ProductController {
         return ResponseEntity.ok(products);
     }
     
-    // === SỬA DÒNG NÀY: Thêm regex :[0-9]+ để chỉ nhận số ===
+    // ... (Giữ nguyên các API getById, getSlug...)
     @GetMapping("/{id:[0-9]+}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Optional<Product> product = productService.getProductById(id);
-        return product.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return product.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
-    
+
     @GetMapping("/slug/{slug}")
     public ResponseEntity<Product> getProductBySlug(@PathVariable String slug) {
         Optional<Product> product = productService.getProductBySlug(slug);
         if (product.isPresent()) {
             productService.incrementViewCount(product.get().getId());
         }
-        return product.map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
+        return product.map(ResponseEntity::ok).orElse(ResponseEntity.notFound().build());
     }
 }

@@ -10,7 +10,7 @@ const Products = () => {
   const [loading, setLoading] = useState(true)
   const [page, setPage] = useState(0)
   const [totalPages, setTotalPages] = useState(0)
-  const [totalElements, setTotalElements] = useState(0) // State lưu tổng số sản phẩm
+  const [totalElements, setTotalElements] = useState(0)
   
   // State cho bộ lọc & sắp xếp
   const [filters, setFilters] = useState({
@@ -30,7 +30,7 @@ const Products = () => {
   // Load lại khi page, category hoặc sortOption thay đổi
   useEffect(() => {
     loadProducts()
-  }, [page, filters.categoryId, sortOption]) 
+  }, [page, filters.categoryId, sortOption]) // Khi sortOption đổi -> useEffect chạy -> loadProducts chạy
 
   const loadCategories = async () => {
     try {
@@ -45,17 +45,18 @@ const Products = () => {
     try {
       setLoading(true)
       
-      // Xác định sortBy và sortDir dựa trên sortOption
+      // === LOGIC QUAN TRỌNG: Mapping Sort Option ===
+      // Chuyển đổi lựa chọn từ Dropdown thành tham số API
       let sortBy = 'createdAt'
       let sortDir = 'DESC'
 
       switch (sortOption) {
         case 'price_asc':
-          sortBy = 'currentPrice'
+          sortBy = 'currentPrice' // Sắp xếp theo trường ảo @Formula bên Backend
           sortDir = 'ASC'
           break
         case 'price_desc':
-          sortBy = 'currentPrice'
+          sortBy = 'currentPrice' // Sắp xếp theo trường ảo @Formula bên Backend
           sortDir = 'DESC'
           break
         case 'name_asc':
@@ -69,12 +70,13 @@ const Products = () => {
           break
       }
 
+      // Gọi API Search với các tham số
       const response = await productService.searchProducts({
         keyword: filters.keyword,
         categoryId: filters.categoryId,
         minPrice: filters.minPrice || null,
         maxPrice: filters.maxPrice || null
-      }, page, 12, sortBy, sortDir) // Truyền thêm tham số sort
+      }, page, 12, sortBy, sortDir) // Truyền sortBy, sortDir vào đây
       
       setProducts(response.content || [])
       setTotalPages(response.totalPages || 0)
@@ -86,6 +88,7 @@ const Products = () => {
     }
   }
 
+  // ... (Giữ nguyên các hàm handleFilterChange, handleApplyPrice, v.v.) ...
   const handleFilterChange = (e) => {
     const { name, value } = e.target
     setFilters(prev => ({ ...prev, [name]: value }))
@@ -123,7 +126,7 @@ const Products = () => {
       
       <div className="container my-4">
         <div className="row">
-          {/* === SIDEBAR BỘ LỌC === */}
+          {/* === SIDEBAR BỘ LỌC (Giữ nguyên) === */}
           <div className="col-lg-3 mb-4">
             <div className="card shadow-sm border-0 sticky-top" style={{ top: '80px', zIndex: 1 }}>
               <div className="card-header bg-white fw-bold">
@@ -221,6 +224,7 @@ const Products = () => {
               
               <div className="d-flex align-items-center">
                 <label className="me-2 small text-muted text-nowrap">Sắp xếp theo:</label>
+                {/* Dropdown thay đổi sortOption */}
                 <select 
                   className="form-select form-select-sm" 
                   style={{ width: '200px' }}
@@ -238,6 +242,7 @@ const Products = () => {
               </div>
             </div>
 
+            {/* ... (Phần hiển thị danh sách sản phẩm giữ nguyên) ... */}
             {loading ? (
               <div className="text-center py-5">
                 <div className="spinner-border text-primary" role="status">

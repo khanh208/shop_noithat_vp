@@ -6,8 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
-// Thêm import này
-import org.hibernate.annotations.Formula;
+import org.hibernate.annotations.Formula; // <-- IMPORT QUAN TRỌNG
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -34,17 +33,16 @@ public class Product extends BaseEntity {
     private String shortDescription;
     
     @Column(nullable = false, precision = 19, scale = 2)
-    private BigDecimal price;
+    private BigDecimal price; // Giá gốc
     
     @Column(name = "sale_price", precision = 19, scale = 2)
-    private BigDecimal salePrice;
+    private BigDecimal salePrice; // Giá sale
     
-    // === THÊM ĐOẠN NÀY ===
-    // Tạo cột ảo 'current_price' để sắp xếp: Nếu có giá sale thì lấy sale, không thì lấy giá gốc
-    // Cú pháp SQL bên dưới dành cho PostgreSQL (COALESCE)
+    // === THÊM ĐOẠN NÀY ĐỂ FIX LỖI SẮP XẾP ===
+    // Tạo cột ảo để tính giá thực tế: Nếu sale_price không null thì lấy sale_price, ngược lại lấy price
     @Formula("COALESCE(sale_price, price)")
     private BigDecimal currentPrice;
-    // =====================
+    // ========================================
     
     @Column(name = "sku", unique = true)
     private String sku;
@@ -71,17 +69,8 @@ public class Product extends BaseEntity {
     @Column(name = "size")
     private String size;
     
-    @Column(name = "weight")
-    private Double weight;
-    
     @Column(name = "dimensions")
     private String dimensions;
-    
-    @Column(name = "meta_title")
-    private String metaTitle;
-    
-    @Column(name = "meta_description")
-    private String metaDescription;
     
     @Column(name = "is_active")
     private Boolean isActive = true;
