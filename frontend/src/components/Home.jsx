@@ -2,15 +2,51 @@ import React, { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import Navigation from './Navigation'
 import { productService } from '../services/productService'
+import IntroPopup from './IntroPopup'
+import axios from 'axios'
+
+// --- BIẾN TOÀN CỤC ---
+// Biến này nằm ngoài component, chỉ bị reset khi tải lại trang (F5 hoặc window.location.href)
+// Khi chuyển trang bằng React Router (Link, navigate), biến này giữ nguyên giá trị.
+let hasShownPopupThisSession = false;
 
 const Home = () => {
   const [featuredProducts, setFeaturedProducts] = useState([])
   const [bestSellingProducts, setBestSellingProducts] = useState([])
   const [loading, setLoading] = useState(true)
+  
+  // State quản lý Banner Popup
+  const [showIntro, setShowIntro] = useState(false)
+  const [popupData, setPopupData] = useState(null)
 
   useEffect(() => {
     loadProducts()
+    loadPopupBanner()
   }, [])
+
+  const loadPopupBanner = async () => {
+    // Nếu đã hiện trong phiên làm việc này rồi thì bỏ qua
+    if (hasShownPopupThisSession) return;
+
+    try {
+      // Gọi API lấy banner có position='POPUP'
+      // Lưu ý: Đảm bảo backend đang chạy ở cổng 8082
+      const response = await axios.get('http://localhost:8082/api/banners/popup')
+      
+      if (response.data) {
+        setPopupData(response.data)
+        setShowIntro(true)
+      }
+    } catch (error) {
+      console.error("Không tải được banner popup hoặc chưa có banner nào active.")
+    }
+  }
+
+  const handleClosePopup = () => {
+    setShowIntro(false)
+    // Đánh dấu là đã xem xong => Chuyển trang quay lại sẽ không hiện nữa
+    hasShownPopupThisSession = true 
+  }
 
   const loadProducts = async () => {
     try {
@@ -34,6 +70,12 @@ const Home = () => {
 
   return (
     <div className="min-vh-100 bg-light">
+      
+      {/* Chỉ hiển thị khi có dữ liệu và showIntro = true */}
+      {showIntro && popupData && (
+        <IntroPopup bannerData={popupData} onClose={handleClosePopup} />
+      )}
+
       <Navigation />
 
       {/* Hero Section */}
@@ -43,8 +85,8 @@ const Home = () => {
             <i className="fas fa-store me-3"></i>
             Shop Nội Thất Văn Phòng
           </h1>
-          <p className="lead">Nơi cung cấp nội thất văn phòng chất lượng cao</p>
-          <Link to="/products" className="btn btn-light btn-lg mt-3">
+          <p className="lead">Nơi cung cấp nội thất văn phòng chất lượng cao, uy tín hàng đầu</p>
+          <Link to="/products" className="btn btn-light btn-lg mt-3 shadow-sm fw-bold">
             <i className="fas fa-shopping-bag me-2"></i>
             Xem tất cả sản phẩm
           </Link>
@@ -74,12 +116,11 @@ const Home = () => {
             <div className="row">
               {featuredProducts.map((product) => (
                 <div key={product.id} className="col-md-3 mb-4">
-                  <div className="card h-100 shadow-sm">
+                  <div className="card h-100 shadow-sm border-0">
                     <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none">
                       <img
-                        // ĐÃ SỬA: Thay bằng placehold.co
-                        src={product.images && product.images.length > 0
-                          ? product.images[0].imageUrl
+                        src={product.images && product.images.length > 0 
+                          ? product.images[0].imageUrl 
                           : 'https://placehold.co/300x200?text=No+Image'}
                         className="card-img-top"
                         alt={product.name}
@@ -87,33 +128,33 @@ const Home = () => {
                       />
                     </Link>
                     <div className="card-body d-flex flex-column">
-                      <h5 className="card-title">
+                      <h5 className="card-title text-truncate">
                         <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none text-dark">
                           {product.name}
                         </Link>
                       </h5>
                       <p className="card-text text-muted small flex-grow-1">
-                        {product.shortDescription?.substring(0, 80)}...
+                        {product.shortDescription?.substring(0, 60)}...
                       </p>
                       <div className="mt-auto">
-                        {product.salePrice ? (
-                          <>
-                            <span className="text-danger fw-bold">{formatPrice(product.salePrice)}</span>
-                            <span className="text-muted text-decoration-line-through ms-2 small">
-                              {formatPrice(product.price)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-primary fw-bold">{formatPrice(product.price)}</span>
-                        )}
-                        <div className="mt-2">
-                          <Link
+                        <div className="d-flex align-items-center mb-2">
+                            {product.salePrice ? (
+                            <>
+                                <span className="text-danger fw-bold me-2">{formatPrice(product.salePrice)}</span>
+                                <span className="text-muted text-decoration-line-through small">
+                                {formatPrice(product.price)}
+                                </span>
+                            </>
+                            ) : (
+                            <span className="text-primary fw-bold">{formatPrice(product.price)}</span>
+                            )}
+                        </div>
+                        <Link
                             to={`/products/${product.slug || product.id}`}
                             className="btn btn-primary btn-sm w-100"
-                          >
+                        >
                             <i className="fas fa-eye me-2"></i>Xem chi tiết
-                          </Link>
-                        </div>
+                        </Link>
                       </div>
                     </div>
                   </div>
@@ -137,20 +178,17 @@ const Home = () => {
 
           {loading ? (
             <div className="text-center py-5">
-              <div className="spinner-border text-primary" role="status">
-                <span className="visually-hidden">Loading...</span>
-              </div>
+              <div className="spinner-border text-primary" role="status"></div>
             </div>
           ) : (
             <div className="row">
               {bestSellingProducts.map((product) => (
                 <div key={product.id} className="col-md-3 mb-4">
-                  <div className="card h-100 shadow-sm">
+                  <div className="card h-100 shadow-sm border-0">
                     <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none">
                       <img
-                        // ĐÃ SỬA: Thay bằng placehold.co
-                        src={product.images && product.images.length > 0
-                          ? product.images[0].imageUrl
+                        src={product.images && product.images.length > 0 
+                          ? product.images[0].imageUrl 
                           : 'https://placehold.co/300x200?text=No+Image'}
                         className="card-img-top"
                         alt={product.name}
@@ -158,33 +196,33 @@ const Home = () => {
                       />
                     </Link>
                     <div className="card-body d-flex flex-column">
-                      <h5 className="card-title">
+                      <h5 className="card-title text-truncate">
                         <Link to={`/products/${product.slug || product.id}`} className="text-decoration-none text-dark">
                           {product.name}
                         </Link>
                       </h5>
                       <p className="card-text text-muted small flex-grow-1">
-                        {product.shortDescription?.substring(0, 80)}...
+                        {product.shortDescription?.substring(0, 60)}...
                       </p>
                       <div className="mt-auto">
-                        {product.salePrice ? (
-                          <>
-                            <span className="text-danger fw-bold">{formatPrice(product.salePrice)}</span>
-                            <span className="text-muted text-decoration-line-through ms-2 small">
-                              {formatPrice(product.price)}
-                            </span>
-                          </>
-                        ) : (
-                          <span className="text-primary fw-bold">{formatPrice(product.price)}</span>
-                        )}
-                        <div className="mt-2">
-                          <Link
+                        <div className="d-flex align-items-center mb-2">
+                            {product.salePrice ? (
+                            <>
+                                <span className="text-danger fw-bold me-2">{formatPrice(product.salePrice)}</span>
+                                <span className="text-muted text-decoration-line-through small">
+                                {formatPrice(product.price)}
+                                </span>
+                            </>
+                            ) : (
+                            <span className="text-primary fw-bold">{formatPrice(product.price)}</span>
+                            )}
+                        </div>
+                        <Link
                             to={`/products/${product.slug || product.id}`}
                             className="btn btn-primary btn-sm w-100"
-                          >
+                        >
                             <i className="fas fa-eye me-2"></i>Xem chi tiết
-                          </Link>
-                        </div>
+                        </Link>
                       </div>
                     </div>
                   </div>

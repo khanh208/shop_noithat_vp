@@ -32,7 +32,7 @@ const Register = () => {
     setLoading(true)
 
     // Validation
-    if (!formData.username || !formData.email || !formData.password || !formData.fullName) {
+    if (!formData.username || !formData.email || !formData.password || !formData.fullName || !formData.phoneNumber) {
       setError('Vui lòng điền đầy đủ thông tin bắt buộc')
       setLoading(false)
       return
@@ -174,7 +174,7 @@ const Register = () => {
           <div className="mb-3">
             <label htmlFor="phoneNumber" className="form-label">
               <i className="fas fa-phone me-2"></i>
-              Số điện thoại
+              Số điện thoại <span className="text-danger">*</span> {}
             </label>
             <input
               type="tel"
@@ -183,7 +183,8 @@ const Register = () => {
               name="phoneNumber"
               value={formData.phoneNumber}
               onChange={handleChange}
-              placeholder="Nhập số điện thoại (tùy chọn)"
+              placeholder="Nhập số điện thoại"
+              required 
             />
           </div>
 

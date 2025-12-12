@@ -1,5 +1,5 @@
 import React, { useState } from 'react'
-import { useNavigate, Link } from 'react-router-dom'
+import { Link } from 'react-router-dom' // Bỏ useNavigate vì dùng window.location
 import { useAuth } from '../context/AuthContext'
 
 const Login = () => {
@@ -10,7 +10,8 @@ const Login = () => {
   const [error, setError] = useState('')
   const [loading, setLoading] = useState(false)
   const { login } = useAuth()
-  const navigate = useNavigate()
+  
+  // Không cần useNavigate nữa vì chúng ta sẽ reload trang thủ công
 
   const handleChange = (e) => {
     setFormData({
@@ -34,7 +35,10 @@ const Login = () => {
     const result = await login(formData.usernameOrEmail, formData.password)
     
     if (result.success) {
-      navigate('/home')
+      // === QUAN TRỌNG: Dùng window.location.href để chuyển trang ===
+      // Việc này buộc trình duyệt tải lại trang (Refresh), giúp reset biến 
+      // 'hasShownPopupThisSession' ở trang Home => Banner sẽ hiện ra.
+      window.location.href = '/home'
     } else {
       setError(result.message || 'Đăng nhập thất bại')
     }
@@ -92,9 +96,8 @@ const Login = () => {
             />
           </div>
 
-          {/* === SỬA PHẦN NÀY === */}
           <div className="mb-3 text-end">
-            <Link to="/forgot-password" className="text-decoration-none">
+            <Link to="/forgot-password" class="text-decoration-none">
               Quên mật khẩu?
             </Link>
           </div>
@@ -153,8 +156,7 @@ const Login = () => {
           <small className="text-muted">
             <strong>Tài khoản test:</strong><br />
             Admin: <code>admin</code> / <code>admin123</code><br />
-            Customer: <code>customer</code> / <code>customer123</code><br />
-            Test User: <code>testuser</code> / <code>test123</code>
+            Customer: <code>customer</code> / <code>customer123</code>
           </small>
         </div>
       </div>

@@ -17,6 +17,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import com.tmdt.shop_noithat_vp.model.Banner;
+import com.tmdt.shop_noithat_vp.repository.BannerRepository;
 
 import java.math.BigDecimal;
 import java.text.Normalizer;
@@ -40,6 +42,9 @@ public class AdminController {
     
     @Autowired
     private CategoryRepository categoryRepository;
+    
+    @Autowired
+    private com.tmdt.shop_noithat_vp.repository.BannerRepository bannerRepository;
     
     // ==========================================
     // DASHBOARD STATS
@@ -196,5 +201,56 @@ public class AdminController {
         // Xóa dấu gạch ngang ở đầu hoặc cuối nếu có
         slug = slug.replaceAll("^-+|-+$", "");
         return slug;
+    }
+    // QUẢN LÝ BANNER (QUẢNG CÁO)
+    // ==========================================
+    
+    @GetMapping("/banners")
+    public ResponseEntity<List<com.tmdt.shop_noithat_vp.model.Banner>> getAllBanners() {
+        // Lấy tất cả banner chưa bị xóa mềm, sắp xếp theo vị trí và thứ tự
+        return ResponseEntity.ok(bannerRepository.findAll(org.springframework.data.domain.Sort.by("position", "displayOrder")));
+    }
+
+    @GetMapping("/banners/{id}")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Banner> getBannerById(@PathVariable Long id) {
+        com.tmdt.shop_noithat_vp.model.Banner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Banner not found"));
+        return ResponseEntity.ok(banner);
+    }
+
+    @PostMapping("/banners")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Banner> createBanner(@RequestBody com.tmdt.shop_noithat_vp.model.Banner banner) {
+        // Set giá trị mặc định nếu null
+        if (banner.getIsActive() == null) banner.setIsActive(true);
+        if (banner.getDisplayOrder() == null) banner.setDisplayOrder(0);
+        banner.setIsDeleted(false);
+        
+        return ResponseEntity.ok(bannerRepository.save(banner));
+    }
+
+    @PutMapping("/banners/{id}")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Banner> updateBanner(@PathVariable Long id, @RequestBody com.tmdt.shop_noithat_vp.model.Banner bannerDetails) {
+        com.tmdt.shop_noithat_vp.model.Banner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Banner not found"));
+        
+        banner.setTitle(bannerDetails.getTitle());
+        banner.setImageUrl(bannerDetails.getImageUrl());
+        banner.setLink(bannerDetails.getLink());
+        banner.setPosition(bannerDetails.getPosition());
+        banner.setDisplayOrder(bannerDetails.getDisplayOrder());
+        banner.setStartDate(bannerDetails.getStartDate());
+        banner.setEndDate(bannerDetails.getEndDate());
+        banner.setIsActive(bannerDetails.getIsActive());
+        
+        return ResponseEntity.ok(bannerRepository.save(banner));
+    }
+
+    @DeleteMapping("/banners/{id}")
+    public ResponseEntity<?> deleteBanner(@PathVariable Long id) {
+        com.tmdt.shop_noithat_vp.model.Banner banner = bannerRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Banner not found"));
+        // Xóa cứng hoặc xóa mềm tùy nhu cầu, ở đây dùng xóa cứng cho gọn
+        bannerRepository.delete(banner); 
+        return ResponseEntity.ok().build();
     }
 }

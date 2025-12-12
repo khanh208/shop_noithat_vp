@@ -503,6 +503,12 @@ const AdminDashboard = () => {
                   </div>
                   
                 </div>
+                <div className="col-md-3 mb-3">
+                <Link to="/admin/banners" className="btn btn-outline-purple w-100" style={{borderColor: '#6f42c1', color: '#6f42c1'}}>
+                  <i className="fas fa-images me-2"></i>
+                  Quản lý Banner
+                </Link>
+              </div>
               </div>
             </div>
           </div>

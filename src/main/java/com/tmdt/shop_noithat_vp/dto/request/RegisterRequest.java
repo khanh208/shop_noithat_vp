@@ -22,6 +22,7 @@ public class RegisterRequest {
     @NotBlank(message = "Full name is required")
     private String fullName;
     
+    @NotBlank(message = "Số điện thoại là bắt buộc")
     private String phoneNumber;
 }
 

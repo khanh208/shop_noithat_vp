@@ -1,3 +1,4 @@
+// File: src/main/java/com/tmdt/shop_noithat_vp/model/Banner.java
 package com.tmdt.shop_noithat_vp.model;
 
 import jakarta.persistence.*;
@@ -5,6 +6,7 @@ import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import java.time.LocalDateTime;
 
 @Entity
 @Table(name = "banners")
@@ -20,19 +22,21 @@ public class Banner extends BaseEntity {
     @Column(name = "image_url", nullable = false)
     private String imageUrl;
     
-    @Column(name = "link_url")
-    private String linkUrl;
+    @Column(name = "link")
+    private String link;
+    
+    @Column(name = "position") 
+    private String position; 
     
     @Column(name = "display_order")
     private Integer displayOrder = 0;
     
+    @Column(name = "start_date")
+    private LocalDateTime startDate;
+
+    @Column(name = "end_date")
+    private LocalDateTime endDate;
+    
     @Column(name = "is_active")
     private Boolean isActive = true;
-    
-    @Column(name = "banner_type")
-    private String bannerType; // SLIDER, PROMOTION, SIDEBAR
 }
-
-
-
-

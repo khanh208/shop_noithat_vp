@@ -87,13 +87,12 @@ const AdminOrders = () => {
     return texts[status] || status
   }
 
-  // --- MỚI: Hàm xử lý hiển thị Trạng thái thanh toán ---
   const getPaymentStatusBadge = (status) => {
     const badges = {
       'PENDING': 'warning',
       'SUCCESS': 'success',
       'FAILED': 'danger',
-      'REFUNDED': 'primary' // Màu xanh dương cho hoàn tiền
+      'REFUNDED': 'primary'
     }
     return badges[status] || 'secondary'
   }
@@ -103,7 +102,7 @@ const AdminOrders = () => {
       'PENDING': 'Chưa thanh toán',
       'SUCCESS': 'Đã thanh toán',
       'FAILED': 'Thanh toán lỗi',
-      'REFUNDED': 'Đã hoàn tiền' // Text hiển thị
+      'REFUNDED': 'Đã hoàn tiền'
     }
     return texts[status] || status
   }
@@ -112,7 +111,7 @@ const AdminOrders = () => {
     <div className="min-vh-100 bg-light">
       <Navigation />
       
-      <div className="container my-4">
+      <div className="container-fluid px-4 my-4">
         <div className="d-flex justify-content-between align-items-center mb-4">
           <h2>
             <i className="fas fa-shopping-bag me-2"></i>
@@ -132,14 +131,14 @@ const AdminOrders = () => {
         ) : (
           <>
             <div className="table-responsive">
-              <table className="table table-striped table-hover align-middle">
+              <table className="table table-striped table-hover align-middle table-bordered">
                 <thead className="table-dark">
                   <tr>
                     <th>Mã đơn</th>
-                    <th>Khách hàng</th>
+                    <th style={{width: '30%'}}>Thông tin khách hàng & Giao hàng</th>
                     <th>Ngày đặt</th>
                     <th>Tổng tiền</th>
-                    <th style={{ minWidth: '200px' }}>Trạng thái</th>
+                    <th style={{ minWidth: '150px' }}>Trạng thái</th>
                     <th>Thanh toán</th>
                     <th>Thao tác</th>
                   </tr>
@@ -149,16 +148,32 @@ const AdminOrders = () => {
                     const cancelReason = getCancelReason(order.notes);
                     return (
                       <tr key={order.id}>
-                        <td><strong>{order.orderCode}</strong></td>
                         <td>
-                          <div>
-                            <div className="fw-bold">{order.customerName}</div>
-                            <small className="text-muted">{order.customerPhone}</small>
+                            <Link to={`/admin/orders/${order.orderCode}`} className="text-decoration-none fw-bold">
+                                {order.orderCode}
+                            </Link>
+                        </td>
+                        
+                        <td>
+                          <div className="d-flex flex-column">
+                            <span className="fw-bold text-primary">{order.customerName}</span>
+                            <small className="text-muted mb-1">
+                                <i className="fas fa-phone-alt me-1"></i>{order.customerPhone}
+                            </small>
+                            
+                            <div className="small border-top pt-2 mt-1 text-dark">
+                                <i className="fas fa-map-marker-alt me-2 text-danger"></i>
+                                <strong>{order.shippingAddress}</strong>
+                            </div>
+                            <div className="small text-muted ms-4">
+                                {order.shippingWard}, {order.shippingDistrict}, {order.shippingProvince}
+                            </div>
                           </div>
                         </td>
+
                         <td>{new Date(order.createdAt).toLocaleDateString('vi-VN')}</td>
                         <td>
-                          <strong className="text-primary">{formatPrice(order.totalAmount)}</strong>
+                          <strong className="text-danger">{formatPrice(order.totalAmount)}</strong>
                         </td>
                         
                         <td>
@@ -170,7 +185,7 @@ const AdminOrders = () => {
                             {order.orderStatus === 'CANCEL_REQUESTED' && cancelReason && (
                               <div className="mt-1 p-2 rounded border border-warning bg-warning bg-opacity-10 w-100">
                                 <small className="text-warning-emphasis fw-bold d-block">
-                                  <i className="fas fa-bullhorn me-1"></i>Lý do khách hủy:
+                                  <i className="fas fa-bullhorn me-1"></i>Lý do hủy:
                                 </small>
                                 <small className="text-muted fst-italic d-block text-wrap">
                                   "{cancelReason}"
@@ -180,7 +195,6 @@ const AdminOrders = () => {
                           </div>
                         </td>
 
-                        {/* --- CẬP NHẬT CỘT THANH TOÁN --- */}
                         <td>
                           <span className={`badge bg-${getPaymentStatusBadge(order.paymentStatus)}`}>
                             {getPaymentStatusText(order.paymentStatus)}
@@ -188,51 +202,59 @@ const AdminOrders = () => {
                         </td>
                         
                         <td>
-                          <div className="btn-group">
+                          <div className="d-flex gap-1">
+                            <Link 
+                                to={`/admin/orders/${order.orderCode}`} 
+                                className="btn btn-sm btn-outline-primary" 
+                                title="Xem chi tiết"
+                            >
+                                <i className="fas fa-eye"></i>
+                            </Link>
+
                             {order.orderStatus === 'CANCEL_REQUESTED' ? (
                               <>
                                 <button
-                                  className="btn btn-sm btn-success me-1"
+                                  className="btn btn-sm btn-success"
                                   onClick={() => handleUpdateStatus(order.id, 'CANCELLED')}
-                                  title="Đồng ý hủy đơn"
+                                  title="Duyệt hủy"
                                 >
-                                  <i className="fas fa-check me-1"></i>Duyệt
+                                  <i className="fas fa-check"></i>
                                 </button>
                                 <button
                                   className="btn btn-sm btn-danger"
                                   onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')}
-                                  title="Từ chối hủy"
+                                  title="Từ chối"
                                 >
-                                  <i className="fas fa-times me-1"></i>Từ chối
+                                  <i className="fas fa-times"></i>
                                 </button>
                               </>
                             ) : (
                               <>
                                 {order.orderStatus === 'PENDING' && (
-                                    <button className="btn btn-sm btn-success me-1" 
+                                    <button className="btn btn-sm btn-success" 
                                             onClick={() => handleUpdateStatus(order.id, 'CONFIRMED')} title="Xác nhận">
                                         <i className="fas fa-check"></i>
                                     </button>
                                 )}
                                 
                                 {order.orderStatus === 'CONFIRMED' && (
-                                    <button className="btn btn-sm btn-primary me-1" 
+                                    <button className="btn btn-sm btn-primary" 
                                             onClick={() => handleUpdateStatus(order.id, 'PACKING')} title="Đóng gói">
                                         <i className="fas fa-box"></i>
                                     </button>
                                 )}
 
                                 {order.orderStatus === 'PACKING' && (
-                                    <button className="btn btn-sm btn-info me-1" 
+                                    <button className="btn btn-sm btn-info text-white" 
                                             onClick={() => handleUpdateStatus(order.id, 'SHIPPING')} title="Giao hàng">
                                         <i className="fas fa-truck"></i>
                                     </button>
                                 )}
 
                                 {order.orderStatus === 'SHIPPING' && (
-                                    <button className="btn btn-sm btn-success me-1" 
-                                            onClick={() => handleUpdateStatus(order.id, 'DELIVERED')} title="Giao thành công">
-                                        <i className="fas fa-check-circle"></i>
+                                    <button className="btn btn-sm btn-success" 
+                                            onClick={() => handleUpdateStatus(order.id, 'DELIVERED')} title="Hoàn tất">
+                                        <i className="fas fa-check-double"></i>
                                     </button>
                                 )}
 

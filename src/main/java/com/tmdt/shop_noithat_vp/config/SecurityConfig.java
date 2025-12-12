@@ -56,14 +56,34 @@ public class SecurityConfig {
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers(
+                    // 1. Các API xác thực và trang chủ
                     "/api/auth/**", "/auth/**", "/", "/home", 
+                    
+                    // 2. Các API dữ liệu công khai (Sản phẩm, Danh mục, Blog)
                     "/api/products/**", "/api/categories/**", "/api/blog/**",
+                    
+                    // 3. API Banner & Upload (QUAN TRỌNG: Cần thiết để hiển thị banner và upload ảnh)
+                    "/api/banners/**", 
+                    "/api/upload/**",
+                    
+                    // 4. Các trang view (nếu dùng Thymeleaf/MVC cũ)
                     "/product/**", "/categories/**", "/blog/**",
-                    "/payment/callback", 
-                    "/css/**", "/js/**", "/images/**", "/uploads/**", "/api/payment/**"
+                    
+                    // 5. Thanh toán & Webhook
+                    "/payment/callback", "/api/payment/**",
+                    
+                    // 6. Tài nguyên tĩnh (CSS, JS, Ảnh) và thư mục Uploads
+                    "/css/**", "/js/**", "/images/**", "/uploads/**", 
+                    
+                    // 7. Trang lỗi (để tránh lỗi 401 khi ảnh không tìm thấy)
+                    "/error"
                 ).permitAll()
+                
+                // Các quyền truy cập dành cho Admin và Nhân viên
                 .requestMatchers("/admin/**", "/api/admin/**").hasAnyRole("ADMIN", "SALES", "WAREHOUSE", "MARKETING")
                 .requestMatchers("/shipper/**").hasRole("SHIPPER")
+                
+                // Tất cả các request khác đều cần đăng nhập
                 .anyRequest().authenticated()
             )
             .exceptionHandling(e -> e
@@ -81,6 +101,7 @@ public class SecurityConfig {
     @Bean
     public CorsConfigurationSource corsConfigurationSource() {
         CorsConfiguration configuration = new CorsConfiguration();
+        // Cho phép Frontend (localhost:3000) và chính Backend (localhost:8082) gọi API
         configuration.setAllowedOrigins(List.of("http://localhost:8082", "http://localhost:3000"));
         configuration.setAllowedMethods(Arrays.asList("GET", "POST", "PUT", "DELETE", "OPTIONS"));
         configuration.setAllowedHeaders(Arrays.asList("*"));

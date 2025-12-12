@@ -24,6 +24,9 @@ import ProtectedRoute from './components/ProtectedRoute'
 import AdminRoute from './components/AdminRoute'
 import PaymentResult from './components/PaymentResult'
 import Wallet from './components/Wallet'
+import AdminOrderDetail from './components/admin/AdminOrderDetail'
+import AdminBanners from './components/admin/AdminBanners'
+import AdminBannerForm from './components/admin/AdminBannerForm'
 
 function App() {
   return (
@@ -47,6 +50,7 @@ function App() {
           <Route path="/orders/:orderCode" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/payment-result" element={<PaymentResult />} />
+          <Route path="/admin/orders/:orderCode" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
 
           {/* === ADMIN ROUTES === */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
@@ -57,8 +61,10 @@ function App() {
           <Route path="/admin/categories" element={<AdminRoute><AdminCategories /></AdminRoute>} />
           <Route path="/admin/categories/new" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
           <Route path="/admin/categories/:id/edit" element={<AdminRoute><AdminCategoryForm /></AdminRoute>} />
-
-<Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />      
+          <Route path="/admin/banners" element={<AdminRoute><AdminBanners /></AdminRoute>} />
+          <Route path="/admin/banners/new" element={<AdminRoute><AdminBannerForm /></AdminRoute>} />
+          <Route path="/admin/banners/:id/edit" element={<AdminRoute><AdminBannerForm /></AdminRoute>} />
+          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />      
           {/* === DEFAULT REDIRECT === */}
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
