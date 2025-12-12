@@ -53,6 +53,12 @@ const walletService = {
       `/wallet/pay-order/${orderId}`
     )
     return response.data
+  },
+  getTransactions: async (page = 0, size = 10) => {
+    const response = await apiClient.get('/wallet/transactions', {
+        params: { page, size }
+    })
+    return response.data
   }
 }
 

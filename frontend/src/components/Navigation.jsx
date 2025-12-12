@@ -83,12 +83,20 @@ const Navigation = () => {
                 {isAuthenticated && cartCount > 0 && <span className="badge bg-danger ms-1">{cartCount}</span>}
               </Link>
             </li>
+            <li className="nav-item">
+              <Link className={`nav-link d-flex align-items-center ${location.pathname === '/wishlist' ? 'active' : ''}`} to="/wishlist" title="Yêu thích">
+                <i className="fas fa-heart text-danger me-1"></i>
+                <span className="d-none d-md-inline">Yêu thích</span>
+              </Link>
+            </li>
             {/* Ẩn link Đơn hàng nếu chưa đăng nhập để đỡ rối, hoặc để lại tùy ý */}
             {isAuthenticated && (
               <li className="nav-item">
                 <Link className={`nav-link ${location.pathname === '/orders' ? 'active' : ''}`} to="/orders">
                   <i className="fas fa-shopping-bag me-1"></i> Đơn hàng
+                  
                 </Link>
+                
               </li>
             )}
           </ul>

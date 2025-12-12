@@ -30,7 +30,7 @@ import AdminBanners from './components/admin/AdminBanners'
 import AdminBannerForm from './components/admin/AdminBannerForm'
 import AdminVouchers from './components/admin/AdminVouchers'
 import AdminVoucherForm from './components/admin/AdminVoucherForm'
-
+import Wishlist from './components/Wishlist'
 function App() {
   return (
     <AuthProvider>
@@ -57,7 +57,8 @@ function App() {
           <Route path="/orders/:orderCode" element={<ProtectedRoute><OrderDetail /></ProtectedRoute>} />
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/payment-result" element={<ProtectedRoute><PaymentResult /></ProtectedRoute>} />
-          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />      
+          <Route path="/wallet" element={<ProtectedRoute><Wallet /></ProtectedRoute>} />    
+          <Route path="/wishlist" element={<ProtectedRoute><Wishlist /></ProtectedRoute>} />  
 
           {/* === ADMIN ROUTES === */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

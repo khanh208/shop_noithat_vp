@@ -41,4 +41,25 @@ public class ReviewController {
         Pageable pageable = PageRequest.of(page, size, Sort.by("createdAt").descending());
         return ResponseEntity.ok(reviewService.getProductReviews(productId, pageable));
     }
+    @PutMapping("/{reviewId}")
+    public ResponseEntity<?> updateReview(
+            @PathVariable Long reviewId,
+            @Valid @RequestBody ReviewRequest request,
+            Authentication authentication) {
+        Long userId = userService.getCurrentUserId(authentication);
+        Review review = reviewService.updateReview(userId, reviewId, request);
+        return ResponseEntity.ok(review);
+    }
+
+    // API Kiểm tra/Lấy đánh giá cũ (để hiển thị lên form sửa)
+    @GetMapping("/check")
+    public ResponseEntity<?> getMyReview(
+            @RequestParam Long orderId,
+            @RequestParam Long productId,
+            Authentication authentication) {
+        Long userId = userService.getCurrentUserId(authentication);
+        return reviewService.getReviewByUserAndOrder(userId, orderId, productId)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.noContent().build()); // Trả về 204 nếu chưa đánh giá
+    }
 }

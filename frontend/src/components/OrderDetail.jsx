@@ -3,6 +3,7 @@ import { useParams, Link } from 'react-router-dom'
 import Navigation from './Navigation'
 import { orderService } from '../services/orderService'
 import { reviewService } from '../services/reviewService'
+import { adminService } from '../services/adminService' // Dùng để upload ảnh
 
 const OrderDetail = () => {
   const { orderCode } = useParams()
@@ -12,9 +13,15 @@ const OrderDetail = () => {
 
   // --- STATE CHO MODAL ĐÁNH GIÁ ---
   const [showReviewModal, setShowReviewModal] = useState(false)
-  const [selectedItem, setSelectedItem] = useState(null) // Sản phẩm đang được đánh giá
+  const [selectedItem, setSelectedItem] = useState(null) 
+  const [existingReview, setExistingReview] = useState(null) // Lưu đánh giá cũ nếu có
+  
+  // Form data
   const [rating, setRating] = useState(5)
   const [comment, setComment] = useState('')
+  const [reviewImageFile, setReviewImageFile] = useState(null) // File ảnh upload
+  const [previewImage, setPreviewImage] = useState('') // URL preview ảnh
+  
   const [submittingReview, setSubmittingReview] = useState(false)
 
   useEffect(() => {
@@ -50,16 +57,54 @@ const OrderDetail = () => {
     }
   }
 
-  // --- XỬ LÝ ĐÁNH GIÁ ---
-  const handleOpenReview = (item) => {
+  // --- XỬ LÝ CHỌN ẢNH REVIEW ---
+  const handleImageChange = (e) => {
+    const file = e.target.files[0]
+    if (file) {
+      setReviewImageFile(file)
+      setPreviewImage(URL.createObjectURL(file))
+    }
+  }
+
+  // --- MỞ MODAL ĐÁNH GIÁ (Kiểm tra xem đã đánh giá chưa) ---
+  const handleOpenReview = async (item) => {
     setSelectedItem(item)
+    
+    // Reset form về mặc định
     setRating(5)
     setComment('')
+    setReviewImageFile(null)
+    setPreviewImage('')
+    setExistingReview(null)
+
+    // Kiểm tra review cũ từ server
+    try {
+        const productId = item.product?.id || item.productId
+        // Gọi API kiểm tra (cần đảm bảo reviewService.getMyReview đã được implement)
+        const reviewData = await reviewService.getMyReview(order.id, productId)
+        
+        if (reviewData && reviewData.id) {
+            setExistingReview(reviewData)
+            setRating(reviewData.rating)
+            setComment(reviewData.comment || '')
+            
+            // Hiển thị ảnh cũ nếu có
+            if (reviewData.reviewImages) {
+                const imgUrl = reviewData.reviewImages.startsWith('http') 
+                    ? reviewData.reviewImages 
+                    : `http://localhost:8082${reviewData.reviewImages}`
+                setPreviewImage(imgUrl)
+            }
+        }
+    } catch (e) {
+        console.error("Lỗi kiểm tra đánh giá cũ:", e)
+    }
+
     setShowReviewModal(true)
   }
 
+  // --- GỬI HOẶC CẬP NHẬT ĐÁNH GIÁ ---
   const handleSubmitReview = async () => {
-    // Lấy ID sản phẩm an toàn (tùy thuộc vào cấu trúc trả về của API order)
     const productId = selectedItem?.product?.id || selectedItem?.productId
     
     if (!productId) {
@@ -69,20 +114,39 @@ const OrderDetail = () => {
 
     setSubmittingReview(true)
     try {
-      await reviewService.createReview({
+      let imageUrl = existingReview?.reviewImages || ''
+
+      // 1. Nếu người dùng chọn file ảnh mới -> Upload lên server trước
+      if (reviewImageFile) {
+         const uploadRes = await adminService.uploadImage(reviewImageFile)
+         imageUrl = uploadRes.url
+      }
+
+      // 2. Chuẩn bị payload
+      const payload = {
         productId: productId,
         orderId: order.id,
         rating: rating,
-        comment: comment
-      })
+        comment: comment,
+        reviewImages: imageUrl // Gửi URL ảnh xuống backend
+      }
 
-      alert('Đánh giá thành công!')
+      // 3. Gọi API Create hoặc Update
+      if (existingReview) {
+          // UPDATE
+          await reviewService.updateReview(existingReview.id, payload)
+          alert('Cập nhật đánh giá thành công!')
+      } else {
+          // CREATE
+          await reviewService.createReview(payload)
+          alert('Gửi đánh giá thành công!')
+      }
+
       setShowReviewModal(false)
-      // Có thể load lại order nếu backend có cập nhật trạng thái "đã đánh giá" cho item
-      // await loadOrder() 
+      // Có thể reload lại order hoặc danh sách đánh giá nếu cần
     } catch (err) {
       console.error('Lỗi gửi đánh giá', err)
-      alert(err.response?.data?.message || 'Bạn đã đánh giá sản phẩm này trong đơn hàng này rồi.')
+      alert(err.response?.data?.message || 'Có lỗi xảy ra khi gửi đánh giá.')
     } finally {
       setSubmittingReview(false)
     }
@@ -202,7 +266,8 @@ const OrderDetail = () => {
                                 className="btn btn-sm btn-outline-warning"
                                 onClick={() => handleOpenReview(item)}
                               >
-                                <i className="fas fa-star me-1"></i>Đánh giá
+                                <i className="fas fa-star me-1"></i>
+                                {existingReview ? 'Sửa đánh giá' : 'Đánh giá'}
                               </button>
                             )}
                           </td>
@@ -308,7 +373,9 @@ const OrderDetail = () => {
           <div className="modal-dialog modal-dialog-centered">
             <div className="modal-content">
               <div className="modal-header">
-                <h5 className="modal-title">Đánh giá sản phẩm</h5>
+                <h5 className="modal-title">
+                    {existingReview ? 'Chỉnh sửa đánh giá' : 'Đánh giá sản phẩm'}
+                </h5>
                 <button type="button" className="btn-close" onClick={() => setShowReviewModal(false)}></button>
               </div>
               <div className="modal-body">
@@ -334,6 +401,36 @@ const OrderDetail = () => {
                     value={comment}
                     onChange={(e) => setComment(e.target.value)}
                   ></textarea>
+
+                  {/* --- UPLOAD ẢNH --- */}
+                  <div className="mt-3">
+                      <label className="form-label fw-bold">Thêm hình ảnh (tùy chọn)</label>
+                      <input 
+                          type="file" 
+                          className="form-control" 
+                          accept="image/*"
+                          onChange={handleImageChange}
+                      />
+                      {previewImage && (
+                          <div className="mt-2 position-relative d-inline-block">
+                              <img 
+                                  src={previewImage} 
+                                  alt="Review Preview" 
+                                  className="img-thumbnail" 
+                                  style={{ maxHeight: '120px' }} 
+                              />
+                              {/* Nút xóa ảnh preview nếu muốn (optional) */}
+                              <button 
+                                type="button"
+                                className="btn-close position-absolute top-0 end-0 bg-white p-1"
+                                onClick={() => {
+                                    setReviewImageFile(null)
+                                    setPreviewImage('')
+                                }}
+                              ></button>
+                          </div>
+                      )}
+                  </div>
                 </div>
               </div>
               <div className="modal-footer">
@@ -350,7 +447,7 @@ const OrderDetail = () => {
                       Đang gửi...
                     </>
                   ) : (
-                    'Gửi đánh giá'
+                    existingReview ? 'Cập nhật đánh giá' : 'Gửi đánh giá'
                   )}
                 </button>
               </div>

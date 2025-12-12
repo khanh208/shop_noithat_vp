@@ -72,12 +72,39 @@ public class ReviewService {
         review.setOrder(order);
         review.setRating(request.getRating());
         review.setComment(request.getComment());
-        review.setIsApproved(true); // Tự động duyệt hoặc set false nếu cần admin duyệt
+        review.setIsApproved(true); 
+        review.setReviewImages(request.getReviewImages());
+        
+
+        return reviewRepository.save(review);
+    }
+    
+
+    public Page<Review> getProductReviews(Long productId, Pageable pageable) {
+        return reviewRepository.findByProductIdAndIsApprovedTrueAndIsDeletedFalse(productId, pageable);
+    }
+    @Transactional
+    public Review updateReview(Long userId, Long reviewId, ReviewRequest request) {
+        Review review = reviewRepository.findById(reviewId)
+                .orElseThrow(() -> new RuntimeException("Đánh giá không tồn tại"));
+
+        if (!review.getUser().getId().equals(userId)) {
+            throw new RuntimeException("Bạn không có quyền chỉnh sửa đánh giá này");
+        }
+
+        // Cho phép sửa điểm, nhận xét và ảnh
+        review.setRating(request.getRating());
+        review.setComment(request.getComment());
+        review.setReviewImages(request.getReviewImages());
+        
+        // Tùy chọn: Nếu sửa thì có cần duyệt lại không? Ở đây giữ nguyên isApproved cũ hoặc set lại true
+        // review.setIsApproved(false); 
 
         return reviewRepository.save(review);
     }
 
-    public Page<Review> getProductReviews(Long productId, Pageable pageable) {
-        return reviewRepository.findByProductIdAndIsApprovedTrueAndIsDeletedFalse(productId, pageable);
+    // Hàm lấy đánh giá của user cho 1 sản phẩm trong đơn hàng cụ thể
+    public Optional<Review> getReviewByUserAndOrder(Long userId, Long orderId, Long productId) {
+        return reviewRepository.findByUserIdAndProductIdAndOrderId(userId, productId, orderId);
     }
 }

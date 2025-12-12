@@ -5,38 +5,46 @@ import { productService } from '../services/productService'
 import { cartService } from '../services/cartService'
 import { useAuth } from '../context/AuthContext'
 import { reviewService } from '../services/reviewService'
+import { wishlistService } from '../services/wishlistService'
 
 const ProductDetail = () => {
   const { slug } = useParams()
   const navigate = useNavigate()
   const { isAuthenticated } = useAuth()
+  
+  // State sản phẩm
   const [product, setProduct] = useState(null)
   const [loading, setLoading] = useState(true)
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [message, setMessage] = useState('')
-  
+  const [isLiked, setIsLiked] = useState(false) // State cho nút yêu thích
+
   // State cho Review
   const [reviews, setReviews] = useState([])
   const [loadingReviews, setLoadingReviews] = useState(false)
 
+  // 1. Load sản phẩm khi slug thay đổi
   useEffect(() => {
     loadProduct()
   }, [slug])
 
-  // Load reviews khi có product ID
+  // 2. Load reviews và trạng thái wishlist khi có product
   useEffect(() => {
     if (product?.id) {
       loadReviews(product.id)
+      
+      if (isAuthenticated) {
+        wishlistService.checkWishlist(product.id).then(setIsLiked)
+      }
     }
-  }, [product])
+  }, [product, isAuthenticated])
 
   const loadProduct = async () => {
     try {
       setLoading(true)
       const productData = await productService.getProductBySlug(slug)
       setProduct(productData)
-      // Reset số lượng về 1 khi load sản phẩm mới
       setQuantity(1)
     } catch (error) {
       console.error('Error loading product:', error)
@@ -64,7 +72,6 @@ const ProductDetail = () => {
       return
     }
 
-    // Kiểm tra kỹ số lượng trước khi thêm
     if (quantity < 1 || quantity > product.stockQuantity) {
         alert("Số lượng không hợp lệ")
         return
@@ -72,7 +79,7 @@ const ProductDetail = () => {
 
     try {
       setAddingToCart(true)
-      await cartService.addToCart(product.id, quantity) // quantity ở đây có thể là string nếu user đang nhập dở, cần đảm bảo là số
+      await cartService.addToCart(product.id, quantity)
       setMessage('Đã thêm vào giỏ hàng!')
       setTimeout(() => setMessage(''), 3000)
     } catch (error) {
@@ -83,19 +90,27 @@ const ProductDetail = () => {
     }
   }
 
-  // --- XỬ LÝ NHẬP SỐ LƯỢNG (MỚI) ---
+  const handleToggleWishlist = async () => {
+    if (!isAuthenticated) {
+        alert("Vui lòng đăng nhập để sử dụng tính năng này")
+        return
+    }
+    try {
+        await wishlistService.toggleWishlist(product.id)
+        setIsLiked(!isLiked) // Đổi trạng thái tim
+    } catch (error) {
+        console.error(error)
+    }
+  }
+
   const handleQuantityChange = (e) => {
     const val = e.target.value
-    
-    // Cho phép xóa trắng ô input để nhập số mới
     if (val === '') {
         setQuantity('')
         return
     }
-
     const parsed = parseInt(val)
     if (!isNaN(parsed)) {
-        // Nếu nhập quá tồn kho -> set bằng tồn kho
         if (parsed > product.stockQuantity) {
             setQuantity(product.stockQuantity)
         } else {
@@ -105,8 +120,6 @@ const ProductDetail = () => {
   }
 
   const handleQuantityBlur = () => {
-    // Khi người dùng bấm ra ngoài ô input (blur)
-    // Nếu để trống hoặc nhập số <= 0 thì tự động set về 1
     if (quantity === '' || quantity < 1) {
         setQuantity(1)
     }
@@ -201,12 +214,10 @@ const ProductDetail = () => {
 
             <p className="text-muted mb-4">{product.shortDescription}</p>
 
-            {/* Attributes Table */}
             <table className="table table-sm table-borderless mb-4">
               <tbody>
                 {product.brand && <tr><td className="text-muted" width="100">Thương hiệu:</td><td>{product.brand}</td></tr>}
                 {product.sku && <tr><td className="text-muted">Mã SKU:</td><td>{product.sku}</td></tr>}
-                {/* --- SỬA PHẦN HIỂN THỊ KHO HÀNG --- */}
                 <tr>
                     <td className="text-muted">Kho hàng:</td>
                     <td>
@@ -220,19 +231,15 @@ const ProductDetail = () => {
               </tbody>
             </table>
 
-            {/* Add to Cart */}
             {product.stockQuantity > 0 && (
               <div className="d-flex align-items-center gap-3 mb-4">
                 <div className="input-group" style={{ width: '130px' }}>
-                  {/* Nút giảm */}
                   <button 
                     className="btn btn-outline-secondary" 
                     onClick={() => setQuantity(prev => Math.max(1, (Number(prev) || 0) - 1))}
                   >
                     -
                   </button>
-                  
-                  {/* Input nhập tay */}
                   <input 
                     type="number" 
                     className="form-control text-center" 
@@ -242,8 +249,6 @@ const ProductDetail = () => {
                     min="1"
                     max={product.stockQuantity}
                   />
-                  
-                  {/* Nút tăng */}
                   <button 
                     className="btn btn-outline-secondary" 
                     onClick={() => setQuantity(prev => Math.min(product.stockQuantity, (Number(prev) || 0) + 1))}
@@ -262,6 +267,14 @@ const ProductDetail = () => {
                   ) : (
                     <><i className="fas fa-cart-plus me-2"></i>Thêm vào giỏ</>
                   )}
+                </button>
+                
+                <button 
+                    className={`btn ${isLiked ? 'btn-danger' : 'btn-outline-danger'} btn-lg`}
+                    onClick={handleToggleWishlist}
+                    title={isLiked ? "Bỏ thích" : "Thêm vào yêu thích"}
+                >
+                    <i className={`fas fa-heart ${isLiked ? '' : 'text-danger'}`}></i>
                 </button>
               </div>
             )}
@@ -328,6 +341,23 @@ const ProductDetail = () => {
                                                 <p className="mb-0 ms-5 ps-2 text-dark" style={{fontSize: '0.95rem'}}>
                                                     {review.comment}
                                                 </p>
+                                                
+                                                {/* --- HIỂN THỊ HÌNH ẢNH ĐÁNH GIÁ (Đã Fix) --- */}
+                                                {review.reviewImages && (
+                                                    <div className="ms-5 ps-2 mt-2">
+                                                        <img 
+                                                            src={review.reviewImages.startsWith('http') 
+                                                                ? review.reviewImages 
+                                                                : `http://localhost:8082${review.reviewImages}`} 
+                                                            alt="Review" 
+                                                            className="img-thumbnail" 
+                                                            style={{maxHeight: '150px', cursor: 'pointer'}}
+                                                            onClick={() => window.open(review.reviewImages.startsWith('http') 
+                                                                ? review.reviewImages 
+                                                                : `http://localhost:8082${review.reviewImages}`, '_blank')}
+                                                        />
+                                                    </div>
+                                                )}
                                             </div>
                                         ))}
                                     </div>

@@ -17,6 +17,6 @@ public class ReviewRequest {
     @Min(1)
     @Max(5)
     private Integer rating;
-    
     private String comment;
+    private String reviewImages;
 }
