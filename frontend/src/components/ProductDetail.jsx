@@ -4,6 +4,7 @@ import Navigation from './Navigation'
 import { productService } from '../services/productService'
 import { cartService } from '../services/cartService'
 import { useAuth } from '../context/AuthContext'
+import { reviewService } from '../services/reviewService'
 
 const ProductDetail = () => {
   const { slug } = useParams()
@@ -14,6 +15,7 @@ const ProductDetail = () => {
   const [quantity, setQuantity] = useState(1)
   const [addingToCart, setAddingToCart] = useState(false)
   const [message, setMessage] = useState('')
+  const [reviews, setReviews] = useState([])
 
   useEffect(() => {
     loadProduct()
@@ -51,8 +53,30 @@ const ProductDetail = () => {
     }
   }
 
+  // Load reviews when product is available
+  useEffect(() => {
+    if (product) {
+      loadReviews(product.id)
+    }
+  }, [product])
+
+  const loadReviews = async (productId) => {
+    try {
+      const data = await reviewService.getProductReviews(productId)
+      setReviews(data.content || [])
+    } catch (error) {
+      console.error('Lỗi tải đánh giá', error)
+    }
+  }
+
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price) + ' đ'
+  }
+
+  const renderStars = (rating) => {
+    return [...Array(5)].map((_, index) => (
+      <i key={index} className={`fas fa-star ${index < rating ? 'text-warning' : 'text-muted'}`}></i>
+    ))
   }
 
   if (loading) {
@@ -62,6 +86,32 @@ const ProductDetail = () => {
         <div className="container my-5 text-center">
           <div className="spinner-border text-primary" role="status">
             <span className="visually-hidden">Loading...</span>
+          </div>
+        </div>
+        {/* THÊM PHẦN HIỂN THỊ ĐÁNH GIÁ */}
+        <div className="container mt-4 mb-5">
+          <div className="card shadow-sm">
+            <div className="card-header bg-white">
+              <h4 className="mb-0">Đánh giá sản phẩm ({reviews.length})</h4>
+            </div>
+            <div className="card-body">
+              {reviews.length === 0 ? (
+                <p className="text-muted text-center py-3">Chưa có đánh giá nào.</p>
+              ) : (
+                <ul className="list-group list-group-flush">
+                  {reviews.map(review => (
+                    <li key={review.id} className="list-group-item">
+                      <div className="d-flex justify-content-between">
+                        <strong>{review.user?.fullName || review.user?.username}</strong>
+                        <small className="text-muted">{new Date(review.createdAt).toLocaleDateString()}</small>
+                      </div>
+                      <div className="mb-2">{renderStars(review.rating)}</div>
+                      <p className="mb-0">{review.comment}</p>
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </div>
       </div>

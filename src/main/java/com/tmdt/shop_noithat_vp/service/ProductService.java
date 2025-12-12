@@ -6,9 +6,12 @@ import com.tmdt.shop_noithat_vp.model.Category;
 import com.tmdt.shop_noithat_vp.model.Product;
 import com.tmdt.shop_noithat_vp.repository.CategoryRepository;
 import com.tmdt.shop_noithat_vp.repository.ProductRepository;
+import com.tmdt.shop_noithat_vp.repository.ProductSpecification;
+
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -28,9 +31,6 @@ public class ProductService {
         return productRepository.findByIsActiveTrueAndIsDeletedFalse(pageable);
     }
     
-    /**
-     * Get all products for admin (includes inactive products)
-     */
     public Page<Product> getAllProductsForAdmin(Pageable pageable) {
         return productRepository.findByIsDeletedFalse(pageable);
     }
@@ -51,9 +51,12 @@ public class ProductService {
         return productRepository.findDiscountedProducts(pageable);
     }
     
+    // === HÀM NÀY SẼ HẾT LỖI SAU KHI SỬA REPOSITORY ===
     public Page<Product> searchProducts(Long categoryId, BigDecimal minPrice, BigDecimal maxPrice, 
-                                       String brand, String keyword, Pageable pageable) {
-        return productRepository.searchProducts(categoryId, minPrice, maxPrice, brand, keyword, pageable);
+                                   String brand, String keyword, Pageable pageable) {
+        Specification<Product> spec = ProductSpecification.filterProducts(categoryId, minPrice, maxPrice, brand, keyword);
+        // Gọi hàm findAll(Specification, Pageable) của JpaSpecificationExecutor
+        return productRepository.findAll(spec, pageable);
     }
     
     public Optional<Product> getProductById(Long id) {
@@ -77,20 +80,13 @@ public class ProductService {
         return productRepository.countByIsDeletedFalse();
     }
     
-    /**
-     * Get product by ID (for admin - includes inactive products)
-     */
     public Optional<Product> getProductByIdForAdmin(Long id) {
         return productRepository.findById(id)
                 .filter(p -> !p.getIsDeleted());
     }
     
-    /**
-     * Create new product
-     */
     @Transactional
     public Product createProduct(CreateProductRequest request) {
-        // Check if SKU already exists
         if (productRepository.findBySku(request.getSku()).isPresent()) {
             throw new RuntimeException("SKU đã tồn tại: " + request.getSku());
         }
@@ -120,9 +116,6 @@ public class ProductService {
         return productRepository.save(product);
     }
     
-    /**
-     * Update product
-     */
     @Transactional
     public Product updateProduct(Long productId, UpdateProductRequest request) {
         Product product = productRepository.findById(productId)
@@ -154,9 +147,6 @@ public class ProductService {
         return productRepository.save(product);
     }
     
-    /**
-     * Delete product (soft delete)
-     */
     @Transactional
     public void deleteProduct(Long productId) {
         Product product = productRepository.findById(productId)
@@ -165,9 +155,6 @@ public class ProductService {
         productRepository.save(product);
     }
     
-    /**
-     * Generate slug from product name
-     */
     private String generateSlug(String name) {
         String slug = name.toLowerCase()
                 .replaceAll("[àáạảãâầấậẩẫăằắặẳẵ]", "a")
@@ -182,7 +169,6 @@ public class ProductService {
                 .replaceAll("-+", "-")
                 .trim();
         
-        // Ensure uniqueness
         String baseSlug = slug;
         int counter = 1;
         while (productRepository.findBySlug(slug).isPresent()) {
@@ -193,4 +179,3 @@ public class ProductService {
         return slug;
     }
 }
-

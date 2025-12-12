@@ -2,12 +2,18 @@ import React, { useState, useEffect } from 'react'
 import { useParams, Link } from 'react-router-dom'
 import Navigation from './Navigation'
 import { orderService } from '../services/orderService'
+import { reviewService } from '../services/reviewService'
 
 const OrderDetail = () => {
   const { orderCode } = useParams()
   const [order, setOrder] = useState(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
+  // Review modal state
+  const [showReviewModal, setShowReviewModal] = useState(false)
+  const [selectedProduct, setSelectedProduct] = useState(null)
+  const [rating, setRating] = useState(5)
+  const [comment, setComment] = useState('')
 
   useEffect(() => {
     loadOrder()
@@ -23,6 +29,36 @@ const OrderDetail = () => {
       setError('Không tìm thấy đơn hàng hoặc có lỗi xảy ra.')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const handleOpenReview = (item) => {
+    setSelectedProduct(item)
+    setRating(5)
+    setComment('')
+    setShowReviewModal(true)
+  }
+
+  const handleSubmitReview = async () => {
+    try {
+      const productId = selectedProduct?.product?.id || selectedProduct?.productId || selectedProduct?.product_id
+      if (!productId) {
+        alert('Không xác định được sản phẩm để đánh giá')
+        return
+      }
+
+      await reviewService.createReview({
+        productId,
+        orderId: order.id,
+        rating,
+        comment
+      })
+
+      alert('Đánh giá thành công!')
+      setShowReviewModal(false)
+    } catch (err) {
+      console.error('Lỗi gửi đánh giá', err)
+      alert(err.response?.data?.message || 'Lỗi khi gửi đánh giá')
     }
   }
 
@@ -120,9 +156,18 @@ const OrderDetail = () => {
                       {order.orderItems.map((item) => (
                         <tr key={item.id}>
                           <td>
-                            <div>
+                            <div className="d-flex flex-column">
                               <strong>{item.productName}</strong>
-                              {/* Có thể thêm ảnh sản phẩm nếu API trả về */}
+                              {/* NÚT ĐÁNH GIÁ: Chỉ hiện khi đơn đã giao */}
+                              {order.orderStatus === 'DELIVERED' && (
+                                <button
+                                  className="btn btn-sm btn-outline-warning mt-2"
+                                  style={{ width: 'fit-content' }}
+                                  onClick={() => handleOpenReview(item)}
+                                >
+                                  <i className="fas fa-star me-1"></i>Viết đánh giá
+                                </button>
+                              )}
                             </div>
                           </td>
                           <td className="text-center">{item.quantity}</td>
@@ -232,6 +277,47 @@ const OrderDetail = () => {
           </div>
         </div>
       </div>
+      {/* MODAL ĐÁNH GIÁ */}
+      {showReviewModal && (
+        <div className="modal d-block" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+          <div className="modal-dialog">
+            <div className="modal-content">
+              <div className="modal-header">
+                <h5 className="modal-title">Đánh giá sản phẩm</h5>
+                <button className="btn-close" onClick={() => setShowReviewModal(false)}></button>
+              </div>
+              <div className="modal-body">
+                <p>Sản phẩm: <strong>{selectedProduct?.productName || selectedProduct?.product?.name}</strong></p>
+
+                <div className="mb-3 text-center fs-3">
+                  {[1,2,3,4,5].map(star => (
+                    <i
+                      key={star}
+                      className={`fas fa-star ${star <= rating ? 'text-warning' : 'text-muted'}`}
+                      onClick={() => setRating(star)}
+                      style={{ cursor: 'pointer', margin: '0 5px' }}
+                    ></i>
+                  ))}
+                </div>
+
+                <div className="mb-3">
+                  <textarea
+                    className="form-control"
+                    rows="3"
+                    placeholder="Nhập nhận xét của bạn..."
+                    value={comment}
+                    onChange={(e) => setComment(e.target.value)}
+                  ></textarea>
+                </div>
+              </div>
+              <div className="modal-footer">
+                <button className="btn btn-secondary" onClick={() => setShowReviewModal(false)}>Đóng</button>
+                <button className="btn btn-primary" onClick={handleSubmitReview}>Gửi đánh giá</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

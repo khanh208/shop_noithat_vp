@@ -28,8 +28,7 @@ public class ProductController {
             @RequestParam(defaultValue = "DESC") String sortDir) {
         Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
         Pageable pageable = PageRequest.of(page, size, sort);
-        Page<Product> products = productService.getAllProducts(pageable);
-        return ResponseEntity.ok(products);
+        return ResponseEntity.ok(productService.getAllProducts(pageable));
     }
     
     @GetMapping("/featured")
@@ -64,13 +63,19 @@ public class ProductController {
             @RequestParam(required = false) String brand,
             @RequestParam(required = false) String keyword,
             @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "12") int size) {
-        Pageable pageable = PageRequest.of(page, size);
+            @RequestParam(defaultValue = "12") int size,
+            @RequestParam(defaultValue = "createdAt") String sortBy,
+            @RequestParam(defaultValue = "DESC") String sortDir) {
+        
+        Sort sort = sortDir.equalsIgnoreCase("ASC") ? Sort.by(sortBy).ascending() : Sort.by(sortBy).descending();
+        Pageable pageable = PageRequest.of(page, size, sort);
+        
         Page<Product> products = productService.searchProducts(categoryId, minPrice, maxPrice, brand, keyword, pageable);
         return ResponseEntity.ok(products);
     }
     
-    @GetMapping("/{id}")
+    // === SỬA DÒNG NÀY: Thêm regex :[0-9]+ để chỉ nhận số ===
+    @GetMapping("/{id:[0-9]+}")
     public ResponseEntity<Product> getProductById(@PathVariable Long id) {
         Optional<Product> product = productService.getProductById(id);
         return product.map(ResponseEntity::ok)
@@ -87,7 +92,3 @@ public class ProductController {
                 .orElse(ResponseEntity.notFound().build());
     }
 }
-
-
-
-
