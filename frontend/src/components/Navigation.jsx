@@ -35,10 +35,27 @@ const Navigation = () => {
   return (
     <nav className="navbar navbar-expand-lg navbar-dark bg-dark">
       <div className="container">
-        <Link className="navbar-brand" to="/home">
-          <i className="fas fa-store me-2"></i>
-          Shop Nội Thất Văn Phòng
-        </Link>
+        <Link className="navbar-brand d-flex align-items-center" to="/home">
+        {/* Hiển thị Logo */}
+        <img 
+          src="/images/logo.png" 
+          alt="Logo" 
+          height="40" 
+          className="me-2" 
+          style={{ objectFit: 'contain' }}
+          onError={(e) => {
+            // Fallback nếu ảnh lỗi: hiện lại icon cũ
+            e.target.style.display = 'none'; 
+            e.target.nextSibling.style.display = 'inline-block';
+          }}
+        />
+        
+        {/* (Tùy chọn) Giữ lại tên shop hoặc xóa đi nếu logo đã có tên */}
+        <span className="fw-bold">Shop Nội Thất VP</span>
+        
+        {/* Icon backup (ẩn mặc định, chỉ hiện khi ảnh lỗi nhờ hàm onError trên) */}
+        <i className="fas fa-store me-2" style={{display: 'none'}}></i>
+      </Link>
         <button className="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarNav">
           <span className="navbar-toggler-icon"></span>
         </button>

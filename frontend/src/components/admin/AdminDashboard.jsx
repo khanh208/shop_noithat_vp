@@ -456,7 +456,7 @@ const AdminDashboard = () => {
                       Thêm sản phẩm mới
                     </Link>
                   </div>
-                  
+
                   <div className="col-md-3 mb-3">
                     <Link to="/admin/categories/new" className="btn btn-outline-info w-100">
                       <i className="fas fa-folder-plus me-2"></i>
@@ -470,14 +470,14 @@ const AdminDashboard = () => {
                       Xem đơn chờ xử lý
                     </Link>
                   </div>
-                  
+
                   {/* --- NÚT EXPORT --- */}
                   <div className="col-md-3 mb-3">
                     <div className="btn-group w-100">
-                      <button 
-                        className="btn btn-outline-success dropdown-toggle" 
-                        type="button" 
-                        data-bs-toggle="dropdown" 
+                      <button
+                        className="btn btn-outline-success dropdown-toggle"
+                        type="button"
+                        data-bs-toggle="dropdown"
                         aria-expanded="false"
                         disabled={exporting}
                       >
@@ -501,14 +501,22 @@ const AdminDashboard = () => {
                       </ul>
                     </div>
                   </div>
-                  
                 </div>
-                <div className="col-md-3 mb-3">
-                <Link to="/admin/banners" className="btn btn-outline-purple w-100" style={{borderColor: '#6f42c1', color: '#6f42c1'}}>
-                  <i className="fas fa-images me-2"></i>
-                  Quản lý Banner
-                </Link>
-              </div>
+
+                <div className="row mt-3">
+                  <div className="col-md-3 mb-3">
+                    <Link to="/admin/banners" className="btn btn-outline-purple w-100" style={{ borderColor: '#6f42c1', color: '#6f42c1' }}>
+                      <i className="fas fa-images me-2"></i>
+                      Quản lý Banner
+                    </Link>
+                  </div>
+                  <div className="col-md-3 mb-3">
+                    <Link to="/admin/vouchers" className="btn btn-outline-danger w-100" style={{ borderColor: '#dc3545', color: '#dc3545' }}>
+                      <i className="fas fa-ticket-alt me-2"></i>
+                      Quản lý Voucher
+                    </Link>
+                  </div>
+                </div>
               </div>
             </div>
           </div>

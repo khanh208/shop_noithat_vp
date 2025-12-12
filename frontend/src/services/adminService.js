@@ -244,4 +244,31 @@ export const adminService = {
     });
     return response.data;
   },
+  // =================================================================
+  // QUẢN LÝ VOUCHER
+  // =================================================================
+  getAllVouchers: async () => {
+    const response = await apiClient.get('/vouchers')
+    return response.data
+  },
+
+  getVoucherById: async (id) => {
+    const response = await apiClient.get(`/vouchers/${id}`)
+    return response.data
+  },
+
+  createVoucher: async (voucherData) => {
+    const response = await apiClient.post('/vouchers', voucherData)
+    return response.data
+  },
+
+  updateVoucher: async (id, voucherData) => {
+    const response = await apiClient.put(`/vouchers/${id}`, voucherData)
+    return response.data
+  },
+
+  deleteVoucher: async (id) => {
+    const response = await apiClient.delete(`/vouchers/${id}`)
+    return response.data
+  },
 }

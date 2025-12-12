@@ -27,6 +27,8 @@ import Wallet from './components/Wallet'
 import AdminOrderDetail from './components/admin/AdminOrderDetail'
 import AdminBanners from './components/admin/AdminBanners'
 import AdminBannerForm from './components/admin/AdminBannerForm'
+import AdminVouchers from './components/admin/AdminVouchers'
+import AdminVoucherForm from './components/admin/AdminVoucherForm'
 
 function App() {
   return (
@@ -51,6 +53,9 @@ function App() {
           <Route path="/profile" element={<ProtectedRoute><Profile /></ProtectedRoute>} />
           <Route path="/payment-result" element={<PaymentResult />} />
           <Route path="/admin/orders/:orderCode" element={<AdminRoute><AdminOrderDetail /></AdminRoute>} />
+          <Route path="/admin/vouchers" element={<AdminRoute><AdminVouchers /></AdminRoute>} />
+          <Route path="/admin/vouchers/new" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
+          <Route path="/admin/vouchers/:id/edit" element={<AdminRoute><AdminVoucherForm /></AdminRoute>} />
 
           {/* === ADMIN ROUTES === */}
           <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />

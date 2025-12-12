@@ -5,23 +5,34 @@ import { cartService } from '../services/cartService'
 import { orderService } from '../services/orderService'
 import { userService } from '../services/userService'
 import { useAuth } from '../context/AuthContext'
-import walletService from '../services/walletService'
+import { voucherService } from '../services/voucherService' // Đảm bảo đã import
 import axios from 'axios'
 
 const Checkout = () => {
   const navigate = useNavigate()
   const { user } = useAuth()
   const [cartItems, setCartItems] = useState([])
-  const [total, setTotal] = useState(0)
+  
+  // SỬA: Dùng subTotal để lưu tạm tính, total sẽ được tính toán động
+  const [subTotal, setSubTotal] = useState(0) 
+  
   const [loading, setLoading] = useState(true)
   const [processing, setProcessing] = useState(false)
   const [walletBalance, setWalletBalance] = useState(0)
+
+  // --- STATE VOUCHER ---
+  const [voucherCodeInput, setVoucherCodeInput] = useState('')
+  const [appliedVoucher, setAppliedVoucher] = useState(null) // { code, discountAmount }
+  const [voucherError, setVoucherError] = useState('')
+  const [checkingVoucher, setCheckingVoucher] = useState(false)
 
   // State cho địa chỉ
   const [provinces, setProvinces] = useState([])
   const [districts, setDistricts] = useState([])
   const [wards, setWards] = useState([])
 
+  const shippingFee = 30000;
+  
   const [formData, setFormData] = useState({
     customerName: user?.fullName || '',
     customerPhone: user?.phoneNumber || '',
@@ -31,7 +42,6 @@ const Checkout = () => {
     shippingDistrict: '',
     shippingWard: '',
     paymentMethod: 'COD',
-    voucherCode: '',
     notes: ''
   })
 
@@ -64,13 +74,48 @@ const Checkout = () => {
         const price = item.product.salePrice || item.product.price
         return acc + (price * item.quantity)
       }, 0)
-      setTotal(sum)
+      // SỬA: Lưu vào subTotal (Tạm tính)
+      setSubTotal(sum) 
     } catch (error) {
       console.error('Lỗi tải giỏ hàng:', error)
     } finally {
       setLoading(false)
     }
   }
+
+  // --- HÀM XỬ LÝ VOUCHER ---
+  const handleApplyVoucher = async () => {
+    if (!voucherCodeInput.trim()) return;
+
+    setCheckingVoucher(true)
+    setVoucherError('')
+    setAppliedVoucher(null)
+
+    try {
+      // Gọi API kiểm tra voucher với tổng tiền tạm tính (subTotal)
+      const result = await voucherService.checkVoucher(voucherCodeInput, subTotal)
+      
+      setAppliedVoucher({
+        code: result.voucherCode,
+        discountAmount: result.discountAmount
+      })
+      alert(`Áp dụng thành công! Giảm: ${formatPrice(result.discountAmount)}`)
+    } catch (error) {
+      setVoucherError(error.response?.data?.message || 'Mã giảm giá không hợp lệ')
+    } finally {
+      setCheckingVoucher(false)
+    }
+  }
+
+  const handleRemoveVoucher = () => {
+    setAppliedVoucher(null)
+    setVoucherCodeInput('')
+    setVoucherError('')
+  }
+
+  // --- TÍNH TOÁN TỔNG TIỀN CUỐI CÙNG ---
+  const discountAmount = appliedVoucher ? appliedVoucher.discountAmount : 0
+  const finalTotal = Math.max(0, subTotal + shippingFee - discountAmount)
 
   // === API provinces.open-api.vn ===
   const fetchProvinces = async () => {
@@ -145,15 +190,20 @@ const Checkout = () => {
     setProcessing(true)
 
     try {
-      // Kiểm tra số dư ví nếu chọn WALLET
-      if (formData.paymentMethod === 'WALLET' && walletBalance < total) {
+      // SỬA: Kiểm tra số dư với finalTotal (sau khi trừ voucher)
+      if (formData.paymentMethod === 'WALLET' && walletBalance < finalTotal) {
         alert('Số dư ví không đủ! Vui lòng nạp thêm tiền hoặc chọn phương thức thanh toán khác.')
         setProcessing(false)
         return
       }
 
-      // 1. Tạo đơn hàng
-      const orderData = await orderService.createOrder(formData)
+      // 1. Tạo đơn hàng (Kèm mã voucher)
+      const orderPayload = {
+        ...formData,
+        voucherCode: appliedVoucher ? appliedVoucher.code : null
+      }
+
+      const orderData = await orderService.createOrder(orderPayload)
       
       if (formData.paymentMethod === 'MOMO') {
         // 2. Nếu chọn MoMo -> Gọi API lấy link thanh toán
@@ -161,7 +211,6 @@ const Checkout = () => {
           const response = await axios.post(`http://localhost:8082/api/payment/create-momo/${orderData.id}`)
           
           if (response.data && response.data.payUrl) {
-            // 3. Chuyển hướng sang trang MoMo
             window.location.href = response.data.payUrl
           } else {
             alert('Lỗi: Không nhận được link thanh toán từ MoMo.')
@@ -173,13 +222,8 @@ const Checkout = () => {
           navigate('/orders')
         }
       } else if (formData.paymentMethod === 'WALLET') {
-        // 3. Nếu chọn WALLET
-        // Backend đã tự động trừ tiền khi tạo đơn (createOrder), không cần gọi API thanh toán riêng nữa.
-        
-        // Chỉ cần thông báo thành công và chuyển hướng
         alert('Thanh toán thành công từ ví cá nhân!')
         navigate('/orders')
-        
       } else {
         // COD
         alert('Đặt hàng thành công! Vui lòng thanh toán khi nhận hàng.')
@@ -193,7 +237,6 @@ const Checkout = () => {
       setProcessing(false)
     }
   }
-// ...existing code...
 
   const formatPrice = (price) => {
     return new Intl.NumberFormat('vi-VN').format(price) + ' đ'
@@ -233,7 +276,6 @@ const Checkout = () => {
                     </div>
                   </div>
 
-                  {/* DROP-DOWN ĐỊA CHỈ */}
                   <div className="row">
                     <div className="col-md-4 mb-3">
                       <label className="form-label">Tỉnh/Thành <span className="text-danger">*</span></label>
@@ -298,15 +340,67 @@ const Checkout = () => {
                         </span>
                       </li>
                     ))}
-                    <li className="list-group-item d-flex justify-content-between fw-bold">
-                      <span>Tổng cộng (chưa ship)</span>
-                      <span className="text-danger">{formatPrice(total)}</span>
+                  </ul>
+
+                  {/* === PHẦN VOUCHER (MỚI THÊM) === */}
+                  <div className="mb-3">
+                    <label className="form-label fw-bold small">Mã giảm giá</label>
+                    <div className="input-group">
+                      <input 
+                        type="text" 
+                        className="form-control" 
+                        placeholder="Nhập mã voucher"
+                        value={voucherCodeInput}
+                        onChange={(e) => setVoucherCodeInput(e.target.value.toUpperCase())}
+                        disabled={appliedVoucher || checkingVoucher}
+                      />
+                      {appliedVoucher ? (
+                        <button className="btn btn-danger" type="button" onClick={handleRemoveVoucher}>
+                          <i className="fas fa-times"></i> Xóa
+                        </button>
+                      ) : (
+                        <button 
+                          className="btn btn-outline-primary" 
+                          type="button" 
+                          onClick={handleApplyVoucher}
+                          disabled={!voucherCodeInput || checkingVoucher}
+                        >
+                          {checkingVoucher ? '...' : 'Áp dụng'}
+                        </button>
+                      )}
+                    </div>
+                    {voucherError && <div className="text-danger small mt-1">{voucherError}</div>}
+                    {appliedVoucher && <div className="text-success small mt-1">Đã áp dụng mã: <strong>{appliedVoucher.code}</strong></div>}
+                  </div>
+                  <hr />
+                  {/* ================================== */}
+
+                  <ul className="list-group list-group-flush mb-3">
+                    <li className="list-group-item d-flex justify-content-between">
+                      <span>Tạm tính</span>
+                      <span>{formatPrice(subTotal)}</span>
+                    </li>
+                    <li className="list-group-item d-flex justify-content-between">
+                      <span>Phí vận chuyển</span>
+                      <span>{formatPrice(shippingFee)}</span>
+                    </li>
+                    
+                    {/* Hiển thị dòng giảm giá nếu có */}
+                    {appliedVoucher && (
+                      <li className="list-group-item d-flex justify-content-between text-success">
+                        <span>Giảm giá</span>
+                        <span>-{formatPrice(appliedVoucher.discountAmount)}</span>
+                      </li>
+                    )}
+
+                    <li className="list-group-item d-flex justify-content-between fw-bold border-top pt-3">
+                      <span>Tổng cộng</span>
+                      <span className="text-danger fs-5">{formatPrice(finalTotal)}</span>
                     </li>
                   </ul>
 
                   <h6 className="mb-3">Phương thức thanh toán</h6>
                   <div className="mb-3">
-                    {/* Option COD */}
                     <div className="form-check mb-2">
                       <input className="form-check-input" type="radio" name="paymentMethod" 
                              id="paymentCOD" value="COD" 
@@ -317,7 +411,6 @@ const Checkout = () => {
                       </label>
                     </div>
 
-                    {/* Option MOMO */}
                     <div className="form-check mb-2">
                       <input className="form-check-input" type="radio" name="paymentMethod" 
                              id="paymentMOMO" value="MOMO" 
@@ -328,7 +421,6 @@ const Checkout = () => {
                       </label>
                     </div>
 
-                    {/* Option WALLET (Mới) */}
                     <div className="form-check">
                       <input 
                         className="form-check-input" 
@@ -338,13 +430,13 @@ const Checkout = () => {
                         value="WALLET" 
                         onChange={handleChange} 
                         checked={formData.paymentMethod === 'WALLET'} 
-                        disabled={walletBalance < total}
+                        disabled={walletBalance < finalTotal}
                       />
                       <label className="form-check-label" htmlFor="paymentWALLET">
                         <i className="fas fa-wallet me-2"></i>
                         Ví cá nhân
                         <span className="fw-bold text-success ms-2">{formatPrice(walletBalance)}</span>
-                        {walletBalance < total && (
+                        {walletBalance < finalTotal && (
                           <span className="text-danger ms-2 small">(Không đủ số dư)</span>
                         )}
                       </label>

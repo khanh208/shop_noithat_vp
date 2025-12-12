@@ -45,6 +45,8 @@ public class AdminController {
     
     @Autowired
     private com.tmdt.shop_noithat_vp.repository.BannerRepository bannerRepository;
+    @Autowired
+    private com.tmdt.shop_noithat_vp.repository.VoucherRepository voucherRepository;
     
     // ==========================================
     // DASHBOARD STATS
@@ -251,6 +253,68 @@ public class AdminController {
                 .orElseThrow(() -> new RuntimeException("Banner not found"));
         // Xóa cứng hoặc xóa mềm tùy nhu cầu, ở đây dùng xóa cứng cho gọn
         bannerRepository.delete(banner); 
+        return ResponseEntity.ok().build();
+    }
+    // ==========================================
+    // QUẢN LÝ VOUCHER
+    // ==========================================
+    
+    @GetMapping("/vouchers")
+    public ResponseEntity<List<com.tmdt.shop_noithat_vp.model.Voucher>> getAllVouchers() {
+        // Lấy tất cả voucher, mới nhất lên đầu
+        return ResponseEntity.ok(voucherRepository.findAll(org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "id")));
+    }
+
+    @GetMapping("/vouchers/{id}")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Voucher> getVoucherById(@PathVariable Long id) {
+        return ResponseEntity.ok(voucherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found")));
+    }
+
+    @PostMapping("/vouchers")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Voucher> createVoucher(@RequestBody com.tmdt.shop_noithat_vp.model.Voucher voucher) {
+        if (voucherRepository.findByCode(voucher.getCode()).isPresent()) {
+            throw new RuntimeException("Mã voucher '" + voucher.getCode() + "' đã tồn tại!");
+        }
+        // Đảm bảo các giá trị mặc định
+        if (voucher.getUsedCount() == null) voucher.setUsedCount(0);
+        if (voucher.getIsActive() == null) voucher.setIsActive(true);
+        if (voucher.getIsDeleted() == null) voucher.setIsDeleted(false);
+        
+        return ResponseEntity.ok(voucherRepository.save(voucher));
+    }
+
+    @PutMapping("/vouchers/{id}")
+    public ResponseEntity<com.tmdt.shop_noithat_vp.model.Voucher> updateVoucher(@PathVariable Long id, @RequestBody com.tmdt.shop_noithat_vp.model.Voucher request) {
+        com.tmdt.shop_noithat_vp.model.Voucher voucher = voucherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found"));
+        
+        // Không cho sửa Code để tránh lỗi logic, hoặc nếu sửa phải check trùng
+        if (!voucher.getCode().equals(request.getCode()) && voucherRepository.findByCode(request.getCode()).isPresent()) {
+             throw new RuntimeException("Mã voucher mới đã tồn tại!");
+        }
+
+        voucher.setCode(request.getCode());
+        voucher.setName(request.getName());
+        voucher.setDescription(request.getDescription());
+        voucher.setDiscountType(request.getDiscountType());
+        voucher.setDiscountValue(request.getDiscountValue());
+        voucher.setMinOrderAmount(request.getMinOrderAmount());
+        voucher.setMaxDiscountAmount(request.getMaxDiscountAmount());
+        voucher.setUsageLimit(request.getUsageLimit());
+        voucher.setStartDate(request.getStartDate());
+        voucher.setEndDate(request.getEndDate());
+        voucher.setIsActive(request.getIsActive());
+        
+        return ResponseEntity.ok(voucherRepository.save(voucher));
+    }
+
+    @DeleteMapping("/vouchers/{id}")
+    public ResponseEntity<?> deleteVoucher(@PathVariable Long id) {
+        com.tmdt.shop_noithat_vp.model.Voucher voucher = voucherRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Voucher not found"));
+        // Xóa cứng
+        voucherRepository.delete(voucher);
         return ResponseEntity.ok().build();
     }
 }

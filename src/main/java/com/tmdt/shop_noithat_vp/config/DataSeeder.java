@@ -1,13 +1,8 @@
 package com.tmdt.shop_noithat_vp.config;
 
-import com.tmdt.shop_noithat_vp.model.Category;
-import com.tmdt.shop_noithat_vp.model.Product;
-import com.tmdt.shop_noithat_vp.model.ProductImage;
-import com.tmdt.shop_noithat_vp.model.User;
+import com.tmdt.shop_noithat_vp.model.*;
 import com.tmdt.shop_noithat_vp.model.enums.Role;
-import com.tmdt.shop_noithat_vp.repository.CategoryRepository;
-import com.tmdt.shop_noithat_vp.repository.ProductRepository;
-import com.tmdt.shop_noithat_vp.repository.UserRepository;
+import com.tmdt.shop_noithat_vp.repository.*;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -15,20 +10,18 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 
 @Component
 public class DataSeeder implements CommandLineRunner {
     
-    @Autowired
-    private UserRepository userRepository;
-    @Autowired
-    private CategoryRepository categoryRepository;
-    @Autowired
-    private ProductRepository productRepository;
-    @Autowired
-    private PasswordEncoder passwordEncoder;
+    @Autowired private UserRepository userRepository;
+    @Autowired private CategoryRepository categoryRepository;
+    @Autowired private ProductRepository productRepository;
+    @Autowired private VoucherRepository voucherRepository; // <-- Thêm cái này
+    @Autowired private PasswordEncoder passwordEncoder;
     
     @Override
     @Transactional
@@ -36,8 +29,11 @@ public class DataSeeder implements CommandLineRunner {
         if (userRepository.count() == 0) seedUsers();
         if (categoryRepository.count() == 0) seedCategories();
         if (productRepository.count() == 0) seedProducts();
+        if (voucherRepository.count() == 0) seedVouchers(); // <-- Thêm dòng này
     }
     
+    // ... (Giữ nguyên các hàm seedUsers, seedCategories, seedProducts cũ)
+
     private void seedUsers() {
         if (!userRepository.existsByUsername("admin")) {
             User admin = new User();
@@ -64,7 +60,7 @@ public class DataSeeder implements CommandLineRunner {
             userRepository.save(customer);
         }
     }
-    
+
     private void seedCategories() {
         createCat("Bàn làm việc", "ban-lam-viec", "Bàn làm việc văn phòng", 1);
         createCat("Ghế văn phòng", "ghe-van-phong", "Ghế ngồi làm việc", 2);
@@ -81,23 +77,19 @@ public class DataSeeder implements CommandLineRunner {
         cat.setDisplayOrder(order);
         categoryRepository.save(cat);
     }
-    
+
     private void seedProducts() {
         Category catBan = categoryRepository.findBySlug("ban-lam-viec").orElse(null);
         Category catGhe = categoryRepository.findBySlug("ghe-van-phong").orElse(null);
         Category catTu = categoryRepository.findBySlug("tu-ho-so").orElse(null);
         Category catKe = categoryRepository.findBySlug("ke-sach").orElse(null);
         
-        // --- SỬ DỤNG ẢNH LOCAL (OFFLINE) ---
-        // Lưu ý: Bạn phải đảm bảo tên file trong thư mục 'public/images/products' 
-        // khớp chính xác với tên file bên dưới (ví dụ: ban-1.jpg)
-        
         if (catBan != null) {
             createProduct(catBan, "Bàn làm việc gỗ sồi", "ban-lam-viec-go-soi", 
                 "Bàn làm việc chất liệu gỗ tự nhiên cao cấp", 
                 new BigDecimal("2500000"), new BigDecimal("2200000"), "BLV-001", 50, 
                 "Furniture Pro", "Gỗ tự nhiên", "Nâu đậm", "120x60x75 cm", true,
-                "/images/products/ban-1.jpg"); // Ảnh trong máy
+                "/images/products/ban-1.jpg");
 
             createProduct(catBan, "Bàn làm việc hiện đại", "ban-lam-viec-hien-dai", 
                 "Bàn làm việc thiết kế hiện đại, màu trắng", 
@@ -148,7 +140,7 @@ public class DataSeeder implements CommandLineRunner {
                 "/images/products/ke-2.jpg"); 
         }
     }
-    
+
     private void createProduct(Category category, String name, String slug, String shortDesc,
                               BigDecimal price, BigDecimal salePrice, String sku, int stock,
                               String brand, String material, String color, String dimensions, 
@@ -183,5 +175,37 @@ public class DataSeeder implements CommandLineRunner {
         product.setImages(images);
         
         productRepository.save(product);
+    }
+
+    // === THÊM HÀM NÀY ===
+    private void seedVouchers() {
+        // Voucher 1: Giảm 10% tối đa 100k cho đơn từ 200k
+        Voucher v1 = new Voucher();
+        v1.setCode("GIAM10");
+        v1.setName("Giảm giá mùa hè");
+        v1.setDescription("Giảm 10% cho đơn hàng từ 200k");
+        v1.setDiscountType("PERCENTAGE");
+        v1.setDiscountValue(new BigDecimal("10")); // 10%
+        v1.setMinOrderAmount(new BigDecimal("200000"));
+        v1.setMaxDiscountAmount(new BigDecimal("100000"));
+        v1.setUsageLimit(100);
+        v1.setStartDate(LocalDateTime.now());
+        v1.setEndDate(LocalDateTime.now().plusMonths(1));
+        v1.setIsActive(true);
+        voucherRepository.save(v1);
+
+        // Voucher 2: Giảm trực tiếp 50k cho đơn từ 500k
+        Voucher v2 = new Voucher();
+        v2.setCode("TRU50K");
+        v2.setName("Voucher chào mừng");
+        v2.setDescription("Giảm ngay 50k cho đơn từ 500k");
+        v2.setDiscountType("FIXED_AMOUNT");
+        v2.setDiscountValue(new BigDecimal("50000"));
+        v2.setMinOrderAmount(new BigDecimal("500000"));
+        v2.setUsageLimit(50);
+        v2.setStartDate(LocalDateTime.now());
+        v2.setEndDate(LocalDateTime.now().plusMonths(1));
+        v2.setIsActive(true);
+        voucherRepository.save(v2);
     }
 }
